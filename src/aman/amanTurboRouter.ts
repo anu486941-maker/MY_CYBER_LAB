@@ -10,6 +10,7 @@ import { AmanActionExecutor } from './amanActionExecutor';
 import { AmanPlatformIndex } from './amanPlatformIndex';
 import { AmanResponseCache } from './amanResponseCache';
 import { isOperationSafe } from './amanPermissions';
+import { getRolePersonalization } from '../services/rolePersonalization';
 
 export interface TurboRouteResult {
   handledLocally: boolean;
@@ -471,14 +472,16 @@ export class AmanTurboRouter {
       lower === 'where should i start' ||
       lower === 'resume learning'
     ) {
-      const nextSkill = compactContext.nextRequiredSkill || 'Network Reconnaissance';
-      const weak = compactContext.weaknessSummary !== 'None identified' ? compactContext.weaknessSummary : 'CIDR Subnetting Calculations';
+      const chosenRoleKey = compactContext.selectedRole || compactContext.activeRole || 'soc-analyst';
+      const roleCfg = getRolePersonalization(chosenRoleKey);
+      const nextRec = roleCfg.getNextAction({ cyberLevel: compactContext.cyberLevel, xp: compactContext.xp });
+      const recModule = roleCfg.recommendedModules[0];
 
       return {
         handledLocally: true,
         executionPath: 'TURBO_FAST_PATH',
         intentCategory: 'LEARNING_RECOMMENDATION',
-        text: `🎯 **Recommended Next Objective**:\n\nBased on your current progress (Level ${compactContext.cyberLevel}, **${compactContext.completedLabsCount} labs completed**):\n\n- **Target Skill**: **${nextSkill}**\n- **Identified Gap**: ${weak}\n- **Recommended Lab**: **Network Reconnaissance & Port Scanning** (\`/network-lab\`) or **Subnetting Speed Trainer** (\`/subnetting-trainer\`)\n\nWould you like me to open the **Network Lab** now?`
+        text: `🎯 **Personalized Career Objective (${roleCfg.title})**:\n\nBased on your selected track and current level (Level ${compactContext.cyberLevel}, **${compactContext.completedLabsCount} labs completed**):\n\n- **Role Track**: **${roleCfg.title}** (${roleCfg.category})\n- **Recommended Next Task**: **${nextRec.title}** (${nextRec.targetName})\n- **Key Tools Focus**: ${roleCfg.tools.slice(0, 3).join(', ')}\n- **Primary Sandbox**: \`${nextRec.route}\`\n\nWould you like me to launch **${nextRec.targetName}** now?`
       };
     }
 
@@ -490,25 +493,58 @@ export class AmanTurboRouter {
       lower === 'open recommended module' ||
       lower === 'open next module'
     ) {
-      const res = await AmanActionExecutor.executeTool('open_network_lab', {}, context);
-      const inv: ToolCallInvocation = {
-        id: `inv-${Date.now()}`,
-        toolName: 'open_network_lab',
-        params: {},
-        permission: 'LOW_RISK',
-        status: 'SUCCESS',
-        result: res.result,
-        timestamp: new Date()
-      };
-      if (onToolInvoked) onToolInvoked(inv);
+      const chosenRoleKey = compactContext.selectedRole || compactContext.activeRole || 'soc-analyst';
+      const roleCfg = getRolePersonalization(chosenRoleKey);
+      const nextRec = roleCfg.getNextAction({ cyberLevel: compactContext.cyberLevel, xp: compactContext.xp });
 
       return {
         handledLocally: true,
         executionPath: 'TURBO_FAST_PATH',
         intentCategory: 'FAST_NAVIGATION',
-        targetRoute: '/network-lab',
-        text: `Opening your recommended module: **Network Reconnaissance & Port Scanning Lab**. Let's tackle open port discovery!`,
-        toolCalls: [inv]
+        targetRoute: nextRec.route,
+        text: `Opening your recommended **${roleCfg.title}** module: **${nextRec.targetName}** (${nextRec.route}). Let's dive in!`
+      };
+    }
+
+    if (
+      lower === 'what should i watch next' ||
+      lower === 'recommend a video' ||
+      lower === 'recommend video' ||
+      lower === 'what video should i watch' ||
+      lower === 'video recommendation' ||
+      lower === 'next video'
+    ) {
+      const chosenRoleKey = compactContext.selectedRole || compactContext.activeRole || 'soc-analyst';
+      const roleCfg = getRolePersonalization(chosenRoleKey);
+      const videoTitle = compactContext.recommendedVideoTitle || 'SOC Fundamentals & SIEM Architecture';
+      const videoTopic = compactContext.recommendedVideoTopic || 'Security Operations';
+      const videoRoute = compactContext.recommendedVideoRoute || '/video-learning';
+      const watched = compactContext.videosWatchedCount || 0;
+
+      return {
+        handledLocally: true,
+        executionPath: 'TURBO_FAST_PATH',
+        intentCategory: 'LEARNING_RECOMMENDATION',
+        text: `🎬 **Recommended Video for ${roleCfg.title}** (Watched: ${watched}):\n\n- **Lesson**: **${videoTitle}**\n- **Domain**: ${videoTopic}\n- **Aligned Track**: ${roleCfg.title}\n\nThis video directly bridges your conceptual understanding with hands-on command execution in our cyber range.\n\nWould you like me to launch this video lesson now?`
+      };
+    }
+
+    if (
+      lower === 'open video learning' ||
+      lower === 'open videos' ||
+      lower === 'go to video learning' ||
+      lower === 'video learning hub' ||
+      lower === 'open recommended video' ||
+      lower === 'watch recommended video' ||
+      lower === 'watch next video'
+    ) {
+      const videoRoute = compactContext.recommendedVideoRoute || '/video-learning';
+      return {
+        handledLocally: true,
+        executionPath: 'TURBO_FAST_PATH',
+        intentCategory: 'FAST_NAVIGATION',
+        targetRoute: videoRoute,
+        text: `Navigating to **Video Learning Hub** (${videoRoute}). Get ready for high-fidelity cybersecurity video mastery!`
       };
     }
 
@@ -534,6 +570,8 @@ export class AmanTurboRouter {
       lower === 'create a study plan for me' ||
       lower.includes('generate study plan')
     ) {
+      const chosenRoleKey = compactContext.selectedRole || compactContext.activeRole || 'soc-analyst';
+      const roleCfg = getRolePersonalization(chosenRoleKey);
       const res = await AmanActionExecutor.executeTool('create_study_plan', { minutesPerDay: 30 }, context);
       const inv: ToolCallInvocation = {
         id: `inv-${Date.now()}`,
@@ -550,7 +588,7 @@ export class AmanTurboRouter {
         handledLocally: true,
         executionPath: 'TURBO_FAST_PATH',
         intentCategory: 'STUDY_PLAN_GENERATION',
-        text: `📅 **Personalized Study Plan (Level ${compactContext.cyberLevel} - ${compactContext.activeRole.replace(/_/g, ' ')})**:\n\n- **Daily Target**: 30 minutes / day\n- **Phase 1 (10m)**: Foundational CLI commands & packet header theory\n- **Phase 2 (15m)**: Interactive Sandbox Practice (Network Recon & Subnetting)\n- **Phase 3 (5m)**: Documenting findings into the ACE Evidence Locker\n\nYour study plan is ready and active!`,
+        text: `📅 **Personalized Study Plan — ${roleCfg.title} (Level ${compactContext.cyberLevel})**:\n\n- **Target Track**: ${roleCfg.title} (${roleCfg.category})\n- **Core Tools**: ${roleCfg.tools.slice(0, 4).join(', ')}\n- **Phase 1 (10m)**: Theory breakdown on ${roleCfg.tools[0] || 'Fundamentals'}\n- **Phase 2 (15m)**: Interactive Sandbox Practice (${roleCfg.labs[0]?.name || 'Lab Simulator'})\n- **Phase 3 (5m)**: Documenting findings into the Evidence Locker & Notebook\n\nYour customized ${roleCfg.title} study plan is armed!`,
         toolCalls: [inv]
       };
     }

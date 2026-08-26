@@ -38,7 +38,8 @@ import {
   Activity,
   Flame,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Video
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -57,6 +58,7 @@ interface NavItem {
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   { name: 'Home', path: '/dashboard', icon: Home },
   { name: 'Learn', path: '/modules', icon: Terminal, badge: 'MODULES', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
+  { name: 'Video Hub', path: '/video-learning', icon: Video, badge: 'VIDEO', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
   { name: 'Skill Library', path: '/skill-library', icon: BookOpen, badge: 'PHASE 6', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
   { name: 'Labs', path: '/practice', icon: Layers, badge: 'PRACTICE', badgeColor: 'bg-indigo-950 text-indigo-300 border-indigo-500/40' },
   { name: 'Roadmap', path: '/roadmap', icon: Compass, badge: 'CAREER', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },

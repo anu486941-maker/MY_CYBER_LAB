@@ -1,3 +1,4 @@
+import { describe, it } from 'vitest';
 import assert from 'assert';
 import { calculateLearnerPosition, calculateNextMove } from '../src/utils/learningPositionEngine';
 import { calculateCoachingLevel, parseVoiceCommand } from '../src/utils/amanInstructionEngine';
@@ -6,17 +7,10 @@ import { UnifiedLearningEngine } from '../src/utils/unifiedLearningEngine';
 import { validateAceCommandScope } from '../src/utils/aceScopePolicy';
 import { AUTHORIZED_CLIENT_ENGAGEMENTS } from '../src/data/authorizedClientEngagements';
 
-console.log('🧪 RUNNING PRODUCTION ENGINE ACCEPTANCE TESTS (v1.0)...');
-
 function runTest(name: string, fn: () => void) {
-  try {
+  it(name, () => {
     fn();
-    console.log(`  ✅ Passed: ${name}`);
-  } catch (err: any) {
-    console.error(`  ❌ Failed: ${name}`);
-    console.error(err);
-    process.exit(1);
-  }
+  });
 }
 
 // ---------------------------------------------------------

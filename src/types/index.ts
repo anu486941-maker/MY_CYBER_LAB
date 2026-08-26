@@ -18,16 +18,22 @@ export type SkillStatus = 'locked' | 'learning' | 'completed' | 'mastered';
 export type CareerRoleId = 
   | 'soc-analyst'
   | 'pentester'
+  | 'web-security'
+  | 'threat-hunter'
+  | 'digital-forensics'
+  | 'dfir-analyst'
+  | 'cloud-security'
+  | 'active-directory'
+  | 'security-python'
+  | 'incident-responder'
+  | 'ctf-ethical-hacker'
   | 'ethical-hacker'
+  | 'beginner-explore'
   | 'network-security'
   | 'blue-team'
   | 'purple-team'
-  | 'dfir-analyst'
-  | 'cloud-security'
   | 'security-engineer'
   | 'security-researcher'
-  | 'web-security'
-  | 'threat-hunter'
   | 'ctf-competitor';
 
 export interface UserProfile {
@@ -44,8 +50,10 @@ export interface UserProfile {
   language: LanguagePreference;
   dailyTime: DailyTimeGoal;
   learningStyle: LearningStyle;
-  targetRole?: CareerRoleId;
-  secondaryRoles?: CareerRoleId[];
+  selectedRole?: CareerRoleId | string;
+  roleSelectedAt?: string;
+  targetRole?: CareerRoleId | string;
+  secondaryRoles?: (CareerRoleId | string)[];
   careerPath?: string;
   rank?: string;
   streakDays?: number;
@@ -632,5 +640,67 @@ export interface EthicalHackerReadiness {
   overallScore: number;
   readinessBand: 'NOVICE' | 'APPRENTICE' | 'TRAINEE' | 'PRACTITIONER' | 'JOB_READY_ETHICAL_HACKER';
 }
+
+// ==========================================
+// VIDEO LEARNING SYSTEM TYPES
+// ==========================================
+
+export interface VideoQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface VideoItem {
+  id: string;
+  title: string;
+  description: string;
+  provider: 'YouTube' | 'Vimeo' | 'CyberLab' | 'PeerTube' | 'Direct';
+  videoUrl: string;
+  embedUrl: string;
+  thumbnail: string;
+  role: CareerRoleId | string;
+  topic: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  duration: string;
+  durationSeconds: number;
+  prerequisites: string[];
+  tags: string[];
+  learningObjectives: string[];
+  notesSummary: string;
+  instructor?: string;
+  channelName?: string;
+  order: number;
+  learningPathStage: 'Foundations' | 'Core Skills' | 'Tool Mastery' | 'Exploitation & Defense' | 'Real-World Scenarios';
+  quiz: VideoQuizQuestion[];
+  relatedLab?: {
+    id: string;
+    name: string;
+    route: string;
+    description: string;
+  };
+  relatedMission?: {
+    id: string;
+    title: string;
+    route: string;
+    description: string;
+  };
+}
+
+export interface VideoUserProgress {
+  videoId: string;
+  completed: boolean;
+  watchProgress: number; // 0 to 100 percentage
+  currentTimeSeconds?: number;
+  lastWatchedAt: string; // ISO date string
+  quizScore?: number; // 0 to 100 percentage
+  quizCompleted?: boolean;
+  bookmarked?: boolean;
+  notes?: string;
+  updatedAt?: string;
+}
+
 
 

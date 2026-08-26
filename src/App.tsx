@@ -60,8 +60,10 @@ const LiveIncidentPage = lazy(() => import('./pages/LiveIncidentPage').then(m =>
 const EthicalHackerCommandCenterPage = lazy(() => import('./pages/EthicalHackerCommandCenterPage').then(m => ({ default: m.EthicalHackerCommandCenterPage })));
 const TryHackMeRoomsPage = lazy(() => import('./pages/TryHackMeRoomsPage').then(m => ({ default: m.TryHackMeRoomsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const RoleSelectionPage = lazy(() => import('./pages/RoleSelectionPage').then(m => ({ default: m.RoleSelectionPage })));
 const InvestigationCenterPage = lazy(() => import('./pages/InvestigationCenterPage').then(m => ({ default: m.InvestigationCenterPage })));
 const SkillLibraryPage = lazy(() => import('./pages/SkillLibraryPage').then(m => ({ default: m.SkillLibraryPage })));
+const VideoLearningPage = lazy(() => import('./pages/VideoLearningPage').then(m => ({ default: m.VideoLearningPage })));
 const DebugPage = lazy(() => import('./pages/DebugPage').then(m => ({ default: m.DebugPage })));
 
 const AppContent: React.FC = () => {
@@ -130,6 +132,8 @@ const AppContent: React.FC = () => {
                       <Routes>
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/select-role" element={<RoleSelectionPage />} />
+                        <Route path="/role-selection" element={<RoleSelectionPage />} />
                         <Route path="/roles" element={<CareerRolesPage />} />
                         <Route path="/career-roles" element={<CareerRolesPage />} />
                         <Route path="/roadmap" element={<RoadmapPage />} />
@@ -138,6 +142,9 @@ const AppContent: React.FC = () => {
                         <Route path="/learn/modules" element={<CyberLabModulesListPage />} />
                         <Route path="/learn/module/:moduleId" element={<CyberLabModuleRunnerPage />} />
                         <Route path="/learning-path" element={<LearningPathPage />} />
+                        <Route path="/video-learning" element={<VideoLearningPage />} />
+                        <Route path="/videos" element={<Navigate to="/video-learning" replace />} />
+                        <Route path="/learn/videos" element={<Navigate to="/video-learning" replace />} />
                         <Route path="/practice" element={<PracticeHubPage />} />
                         <Route path="/rooms" element={<TryHackMeRoomsPage />} />
                         <Route path="/tryhackme" element={<TryHackMeRoomsPage />} />

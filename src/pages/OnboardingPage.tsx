@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { ExperienceLevel, LanguagePreference, DailyTimeGoal, LearningStyle, CareerRoleId } from '../types';
 import { CAREER_ROLES_DATA } from '../data/careerRolesData';
+import { getAllPersonalizedRoles } from '../services/rolePersonalization';
 import { speechEngine } from '../utils/speechEngine';
 import { 
   Shield, 
@@ -264,8 +265,11 @@ export const OnboardingPage: React.FC = () => {
 
   const handleCompleteOnboarding = () => {
     const finalCodename = codename.trim() || 'OPERATOR_01';
+    const nowIso = new Date().toISOString();
     updateProfile({
       codename: finalCodename,
+      selectedRole: primaryRole,
+      roleSelectedAt: nowIso,
       targetRole: primaryRole,
       secondaryRoles,
       experience: experience,
@@ -396,18 +400,18 @@ export const OnboardingPage: React.FC = () => {
                 </h3>
                 
                 {/* Primary selector */}
-                <div className="grid grid-cols-1 gap-3.5">
-                  {CAREER_ROLES_DATA.slice(0, 4).map((role) => (
+                <div className="grid grid-cols-1 gap-3 max-h-[360px] overflow-y-auto pr-1 custom-scrollbar">
+                  {getAllPersonalizedRoles().map((role) => (
                     <div
                       key={role.id}
                       onClick={() => {
-                        setPrimaryRole(role.id);
+                        setPrimaryRole(role.id as CareerRoleId);
                         setSecondaryRoles(prev => prev.filter(id => id !== role.id));
                       }}
-                      className={`p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative flex flex-col justify-between gap-2.5 ${
+                      className={`p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer relative flex flex-col justify-between gap-2 ${
                         primaryRole === role.id
                           ? 'bg-slate-950/80 border-cyan-500 text-slate-100 shadow-[0_0_15px_rgba(6,182,212,0.15)] border-l-4'
-                          : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-750 hover:text-slate-300'
+                          : 'bg-slate-950/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -415,7 +419,7 @@ export const OnboardingPage: React.FC = () => {
                           <span className="text-xl shrink-0">{role.emoji}</span>
                           <div>
                             <span className="font-mono font-bold text-sm text-cyan-300 block">{role.title}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">{role.difficulty} • Est. {role.estimatedHours} Hours</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{role.badge} • {role.demandLevel} Demand</span>
                           </div>
                         </div>
                         {primaryRole === role.id ? (
@@ -423,10 +427,10 @@ export const OnboardingPage: React.FC = () => {
                             PRIMARY TARGET
                           </span>
                         ) : (
-                          <div className="w-5 h-5 rounded-full border border-slate-800" />
+                          <div className="w-4 h-4 rounded-full border border-slate-800" />
                         )}
                       </div>
-                      <p className="text-xs text-slate-400 leading-normal pl-8">
+                      <p className="text-xs text-slate-400 leading-normal pl-7">
                         {role.shortDescription}
                       </p>
                     </div>

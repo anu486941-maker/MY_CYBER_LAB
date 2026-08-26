@@ -51,7 +51,7 @@ export const SettingsPage: React.FC = () => {
   const [language, setLanguage] = useState<string>(profile.language);
   const [dailyTime, setDailyTime] = useState<string>(profile.dailyTime);
   const [learningStyle, setLearningStyle] = useState<string>(profile.learningStyle);
-  const [targetRole, setTargetRole] = useState<CareerRoleId>(profile.targetRole || 'soc-analyst');
+  const [targetRole, setTargetRole] = useState<CareerRoleId>((profile.targetRole as CareerRoleId) || 'soc-analyst');
   const [savedMsg, setSavedMsg] = useState<boolean>(false);
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
 

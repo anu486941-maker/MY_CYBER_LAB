@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { User, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { UnifiedLearningEngine, UnifiedLearningState } from '../utils/unifiedLearningEngine';
 import { CAREER_ROLES_DATA } from '../data/careerRolesData';
@@ -71,7 +71,8 @@ import {
   LanguagePreference,
   EvidenceItem,
   SecurityFinding,
-  EngagementReport
+  EngagementReport,
+  VideoUserProgress
 } from '../types';
 import {
   SkillMasteryRecord,
@@ -88,6 +89,7 @@ import {
   INITIAL_NOTEBOOK_ENTRIES
 } from '../data/mockData';
 import { getEthicalHackerCurriculum, getSocAnalystCurriculum } from '../data/careerCurriculum';
+import { getVideoById } from '../data/videoLearningData';
 import { CareerTrackState } from '../types';
 import {
   INITIAL_SKILL_MASTERIES,
@@ -198,6 +200,15 @@ interface AppContextType {
   isBookmarked: (urlOrRef: string) => boolean;
   recordVideoWatched: (video: Omit<VideoHistoryItem, 'id' | 'watchedAt'>) => void;
   saveAiStudyPlan: (plan: Omit<AiStudyPlanHistoryItem, 'id' | 'generatedAt'>) => void;
+
+  // Video Learning Progress
+  videoProgressMap: Record<string, VideoUserProgress>;
+  updateVideoProgress: (videoId: string, updates: Partial<VideoUserProgress>) => Promise<void>;
+  markVideoComplete: (videoId: string, completed?: boolean) => Promise<void>;
+  recordVideoQuizScore: (videoId: string, score: number) => Promise<void>;
+  toggleBookmarkVideo: (videoId: string) => Promise<void>;
+  saveVideoNotes: (videoId: string, notes: string) => Promise<void>;
+
   recordLabScore: (labId: string, score: number) => void;
   generateCertificate: () => CertificateInfo;
   issueCertificate: (courseName?: string) => CertificateRecord;
@@ -518,6 +529,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try { return JSON.parse(saved); } catch { return {}; }
     }
     return { 'scen-01': 95 };
+  });
+
+  // VIDEO PROGRESS TRACKING STATE (users/{uid}/videoProgress/{videoId})
+  const [videoProgressMap, setVideoProgressMap] = useState<Record<string, VideoUserProgress>>(() => {
+    const saved = localStorage.getItem('mcl_video_progress');
+    if (saved) {
+      try { return JSON.parse(saved); } catch { return {}; }
+    }
+    return {};
   });
 
   // AUTHORIZED CLIENT ENGAGEMENT (ACE) STATE
@@ -1078,6 +1098,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         setLastSyncedTime(nowStr);
         setSyncStatus('SYNCED');
+
+        // Load user-specific video progress subcollection: users/{uid}/videoProgress
+        try {
+          const videoProgressRef = collection(db, 'users', user.uid, 'videoProgress');
+          const videoProgressSnap = await getDocs(videoProgressRef);
+          const remoteVideoProgress: Record<string, VideoUserProgress> = {};
+          videoProgressSnap.forEach(d => {
+            remoteVideoProgress[d.id] = d.data() as VideoUserProgress;
+          });
+          if (Object.keys(remoteVideoProgress).length > 0) {
+            setVideoProgressMap(prev => {
+              const merged = { ...prev, ...remoteVideoProgress };
+              try { localStorage.setItem('mcl_video_progress', JSON.stringify(merged)); } catch {}
+              return merged;
+            });
+          }
+        } catch (vErr) {
+          console.warn('Could not load videoProgress subcollection:', vErr);
+        }
       } else {
         // Document doesn't exist yet, push initial local data to Firestore
         hasLoadedRemoteRef.current = true;
@@ -1497,6 +1536,98 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       watchedAt: new Date().toLocaleString()
     };
     setVideoHistory(prev => [newItem, ...prev.slice(0, 49)]); // Keep last 50
+  };
+
+  // Video Learning Progress Methods (Firestore subcollection: users/{uid}/videoProgress/{videoId})
+  const updateVideoProgress = async (videoId: string, updates: Partial<VideoUserProgress>) => {
+    const now = new Date().toISOString();
+    setVideoProgressMap(prev => {
+      const existing = prev[videoId] || {
+        videoId,
+        completed: false,
+        watchProgress: 0,
+        lastWatchedAt: now
+      };
+      const updated: VideoUserProgress = {
+        ...existing,
+        ...updates,
+        videoId,
+        lastWatchedAt: now,
+        updatedAt: now
+      };
+      const next = { ...prev, [videoId]: updated };
+      try { localStorage.setItem('mcl_video_progress', JSON.stringify(next)); } catch {}
+      return next;
+    });
+
+    if (currentUser) {
+      try {
+        const vidRef = doc(db, 'users', currentUser.uid, 'videoProgress', videoId);
+        await setDoc(vidRef, {
+          videoId,
+          ...updates,
+          lastWatchedAt: now,
+          updatedAt: now
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore videoProgress sync error:', err);
+      }
+    }
+  };
+
+  const markVideoComplete = async (videoId: string, completed: boolean = true) => {
+    await updateVideoProgress(videoId, { 
+      completed, 
+      watchProgress: completed ? 100 : 0 
+    });
+    if (completed) {
+      addXp(50, `Completed video lesson`);
+    }
+  };
+
+  const recordVideoQuizScore = async (videoId: string, score: number) => {
+    const passed = score >= 70;
+    await updateVideoProgress(videoId, {
+      quizScore: score,
+      quizCompleted: true,
+      ...(passed ? { completed: true, watchProgress: 100 } : {})
+    });
+
+    const video = getVideoById(videoId);
+    if (video) {
+      if (!passed) {
+        setWeakSkills(prev => {
+          if (!prev.includes(video.topic)) {
+            const updated = [...prev, video.topic];
+            try { localStorage.setItem('mcl_weak_skills', JSON.stringify(updated)); } catch {}
+            return updated;
+          }
+          return prev;
+        });
+      } else {
+        setWeakSkills(prev => {
+          if (prev.includes(video.topic)) {
+            const updated = prev.filter(s => s !== video.topic);
+            try { localStorage.setItem('mcl_weak_skills', JSON.stringify(updated)); } catch {}
+            return updated;
+          }
+          return prev;
+        });
+      }
+    }
+
+    if (passed) {
+      addXp(50, `Passed Video Mastery Quiz (${score}%)`);
+    }
+  };
+
+  const toggleBookmarkVideo = async (videoId: string) => {
+    const currentVal = !!videoProgressMap[videoId]?.bookmarked;
+    await updateVideoProgress(videoId, { bookmarked: !currentVal });
+  };
+
+  const saveVideoNotes = async (videoId: string, notes: string) => {
+    await updateVideoProgress(videoId, { notes });
   };
 
   const saveAiStudyPlan = (plan: Omit<AiStudyPlanHistoryItem, 'id' | 'generatedAt'>) => {
@@ -2028,6 +2159,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isBookmarked,
         recordVideoWatched,
         saveAiStudyPlan,
+
+        // Video Progress exports
+        videoProgressMap,
+        updateVideoProgress,
+        markVideoComplete,
+        recordVideoQuizScore,
+        toggleBookmarkVideo,
+        saveVideoNotes,
+
         recordLabScore,
         generateCertificate,
         issueCertificate,

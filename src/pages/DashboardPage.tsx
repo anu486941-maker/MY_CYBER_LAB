@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getCareerRoleById } from '../data/careerRolesData';
-import { calculateLearnerPosition, calculateNextMove } from '../utils/learningPositionEngine';
+import { getRolePersonalization } from '../services/rolePersonalization';
+import { getNextRecommendedVideo } from '../services/videoRecommendationEngine';
 import { 
   Flame, 
   Crosshair, 
@@ -15,7 +16,15 @@ import {
   Briefcase,
   Compass,
   Layers,
-  Shield
+  Shield,
+  MessageSquare,
+  Map,
+  Flag,
+  CheckCircle2,
+  SlidersHorizontal,
+  Award,
+  Video,
+  Play
 } from 'lucide-react';
 import { ModeToggleBanner } from '../components/common/ModeToggleBanner';
 import { GlobalProgressBar } from '../components/common/GlobalProgressBar';
@@ -27,15 +36,52 @@ export const DashboardPage: React.FC = () => {
     profile,
     activeCareerTrack,
     setActiveCareerTrack,
-    careerProgress
+    careerProgress,
+    selectedMission,
+    videoProgressMap,
+    weakSkills
   } = useApp();
   const navigate = useNavigate();
 
-  const currentRole = getCareerRoleById(profile.targetRole || 'soc-analyst');
+  const chosenRoleKey = profile.selectedRole || profile.targetRole || 'soc-analyst';
+  const roleConfig = getRolePersonalization(chosenRoleKey);
+  const currentRole = getCareerRoleById(chosenRoleKey);
   const { position, nextMove } = learningState;
 
-  const handleStartNext = () => {
-    navigate(nextMove.stepLink);
+  // Compute role-tailored recommended next action
+  const roleNextAction = roleConfig.getNextAction(profile);
+
+  // Compute role-tailored recommended next video
+  const nextVideo = useMemo(() => {
+    return getNextRecommendedVideo(chosenRoleKey, videoProgressMap, weakSkills);
+  }, [chosenRoleKey, videoProgressMap, weakSkills]);
+
+  const handleStartNextTask = () => {
+    navigate(roleNextAction.route);
+  };
+
+  const handleAskAman = () => {
+    window.dispatchEvent(
+      new CustomEvent('open-aman-drawer', {
+        detail: {
+          prompt: `Namaste AMAN, guide me on my next step for my career track: ${roleConfig.title}. What should I focus on right now?`
+        }
+      })
+    );
+  };
+
+  const handleViewRoadmap = () => {
+    navigate('/roadmap');
+  };
+
+  const handleContinueMission = () => {
+    if (selectedMission) {
+      navigate(`/missions?id=${selectedMission.id}`);
+    } else if (roleConfig.missions && roleConfig.missions.length > 0) {
+      navigate(`/missions?id=${roleConfig.missions[0].id}`);
+    } else {
+      navigate('/missions');
+    }
   };
 
   const tracks = [
@@ -58,7 +104,7 @@ export const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 pb-16">
+    <div id="dashboard-page" className="space-y-6 pb-16">
       
       {/* AUTONOMOUS AMAN INSTRUCTION BANNER */}
       <AmanInstructionBanner />
@@ -66,43 +112,44 @@ export const DashboardPage: React.FC = () => {
       {/* Mode Switcher: Mentor vs Exam Mode */}
       <ModeToggleBanner />
 
-      {/* AMAN HOME — ONE PRIMARY STARTING POINT CARD */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 border-2 border-cyan-500/50 shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-6 relative overflow-hidden">
+      {/* DYNAMIC ROLE-PERSONALIZED AMAN PANEL — HOME STARTING POINT */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 border-2 border-cyan-500/50 shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-6 relative overflow-hidden">
         
         {/* Top Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 shadow-inner">
-              <Bot className="w-6 h-6 animate-pulse" />
+            <div className="p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 shadow-inner flex items-center justify-center text-xl">
+              {roleConfig.emoji}
             </div>
             <div>
               <div className="text-[10px] font-mono font-extrabold text-cyan-400 tracking-widest uppercase flex items-center gap-2">
-                <span>AMAN AI NAVIGATOR • HOME</span>
+                <span>AMAN ROLE-PERSONALIZED RADAR</span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               </div>
               <h1 className="text-xl sm:text-2xl font-mono font-bold text-white">
-                Welcome back, {profile.name}
+                Welcome back, {profile.name || profile.codename || 'Operator'}
               </h1>
             </div>
           </div>
 
+          {/* Active Role Selector Badge */}
           <Link
-            to="/roles"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 text-xs font-mono font-bold transition-all shrink-0 self-start sm:self-auto"
+            to="/select-role"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 text-xs font-mono font-bold transition-all shrink-0 self-start sm:self-auto hover:border-cyan-400 group"
           >
-            <span>{currentRole.emoji}</span>
-            <span>Target Goal: <strong>{currentRole.title}</strong></span>
-            <span className="text-[10px] text-cyan-400 underline ml-1">Change →</span>
+            <span>{roleConfig.emoji}</span>
+            <span>Role: <strong className="text-white">{roleConfig.title}</strong></span>
+            <span className="text-[10px] text-cyan-400 underline ml-1 group-hover:text-cyan-300">Change Role →</span>
           </Link>
         </div>
 
-        {/* Telemetry Status Row: Goal | You Are Here | Progress */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-950/80 border border-slate-800/80 font-mono">
+        {/* Telemetry Status Row: Role & Focus | You Are Here | Path Progress */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-2xl bg-slate-950/80 border border-slate-800/80 font-mono">
           <div className="space-y-1">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">YOUR GOAL</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">CAREER TRACK</span>
             <div className="text-sm font-bold text-cyan-300 flex items-center gap-1.5">
               <Briefcase className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span className="truncate">{currentRole.title}</span>
+              <span className="truncate">{roleConfig.title} ({roleConfig.badge})</span>
             </div>
           </div>
 
@@ -116,90 +163,118 @@ export const DashboardPage: React.FC = () => {
 
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase">
-              <span>PATH PROGRESS</span>
+              <span>TRACK MASTERY</span>
               <span className="text-emerald-400">{position.progressPercentage}%</span>
             </div>
             <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
               <div 
-                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500" 
+                className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 transition-all duration-500" 
                 style={{ width: `${position.progressPercentage}%` }} 
               />
             </div>
           </div>
         </div>
 
-        {/* AMAN'S NEXT MOVE CARD */}
-        <div className="p-5 rounded-xl bg-gradient-to-r from-slate-950 via-cyan-950/20 to-slate-950 border border-cyan-500/40 space-y-4">
+        {/* AMAN'S RECOMMENDED NEXT ACTION CARD */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-cyan-950/30 to-slate-950 border border-cyan-500/40 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-extrabold text-amber-400 tracking-wider uppercase flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              AMAN'S RECOMMENDED NEXT MOVE
+              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+              RECOMMENDED NEXT: {roleNextAction.title.toUpperCase()}
             </span>
             <span className="text-xs font-mono text-slate-400 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-cyan-400" />
-              {nextMove.timeEstimate}
+              {roleNextAction.timeEstimate}
             </span>
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-mono font-black text-white">
-              {nextMove.title}
-            </h2>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <h2 className="text-xl sm:text-2xl font-mono font-black text-white">
+                {roleNextAction.targetName}
+              </h2>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+                {roleConfig.title} Priority
+              </span>
+            </div>
+
             <p className="text-sm text-slate-300 font-sans leading-relaxed">
-              <strong className="text-cyan-400 font-mono">WHY: </strong>
-              {nextMove.whyDescription}
+              <strong className="text-cyan-400 font-mono">WHY AMAN RECOMMENDS THIS: </strong>
+              {roleNextAction.reason}
             </p>
-            {nextMove.hinglishWhy && (
-              <p className="text-xs text-slate-400 font-mono italic">
-                💬 "{nextMove.hinglishWhy}"
-              </p>
-            )}
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[11px] font-mono text-slate-400">Core Tools for this step:</span>
+              {roleConfig.tools.slice(0, 3).map((tool, i) => (
+                <span key={i} className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-300">
+                  {tool}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* ONE DOMINANT PRIMARY CTA BUTTON */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center gap-4">
+          {/* 4 MANDATED ACTION BUTTONS */}
+          <div className="pt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            
+            {/* 1. START NEXT TASK (Primary Dominant CTA) */}
             <button
-              onClick={handleStartNext}
-              className="w-full sm:flex-1 py-4 px-8 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-mono font-black text-base tracking-wider uppercase flex items-center justify-center gap-3 shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all hover:scale-[1.02] cursor-pointer"
+              id="dashboard-start-next-btn"
+              onClick={handleStartNextTask}
+              className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 font-mono font-black text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all hover:scale-[1.02] cursor-pointer"
             >
-              <Crosshair className="w-5 h-5" />
-              <span>START NOW</span>
-              <ArrowRight className="w-5 h-5" />
+              <Crosshair className="w-4 h-4 shrink-0" />
+              <span>START NEXT TASK</span>
+              <ArrowRight className="w-4 h-4 shrink-0" />
             </button>
 
-            {/* Quiet Secondary Links */}
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
-              <Link
-                to="/ai-mentor"
-                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-mono font-bold transition-colors"
-              >
-                Ask AMAN
-              </Link>
-              <Link
-                to="/roadmap"
-                className="px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-xs font-mono font-bold transition-colors"
-              >
-                View Roadmap
-              </Link>
-            </div>
+            {/* 2. ASK AMAN */}
+            <button
+              id="dashboard-ask-aman-btn"
+              onClick={handleAskAman}
+              className="py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/30 hover:border-cyan-400 text-cyan-300 hover:text-white font-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Bot className="w-4 h-4 text-cyan-400 shrink-0" />
+              <span>ASK AMAN</span>
+            </button>
+
+            {/* 3. VIEW ROADMAP */}
+            <button
+              id="dashboard-view-roadmap-btn"
+              onClick={handleViewRoadmap}
+              className="py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Map className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>VIEW ROADMAP</span>
+            </button>
+
+            {/* 4. CONTINUE MISSION */}
+            <button
+              id="dashboard-continue-mission-btn"
+              onClick={handleContinueMission}
+              className="py-3.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Flag className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>CONTINUE MISSION</span>
+            </button>
+
           </div>
         </div>
 
       </div>
 
-      {/* Operator Stats Below the Fold */}
+      {/* Operator Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
+        <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">CYBER LEVEL</span>
           <div className="text-xl font-mono font-black text-cyan-400">LVL {profile.cyberLevel}</div>
         </div>
 
-        <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
+        <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">TOTAL XP</span>
           <div className="text-xl font-mono font-black text-slate-100">{profile.xp} XP</div>
         </div>
 
-        <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
+        <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">DAY STREAK</span>
           <div className="flex items-center gap-1 text-xl font-mono font-black text-amber-400">
             <Flame className="w-4 h-4 fill-amber-400/20" />
@@ -207,13 +282,139 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
+        <div className="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800 space-y-1">
           <span className="text-[10px] font-mono text-slate-400 uppercase block font-bold">SIMULATION HOURS</span>
           <div className="text-xl font-mono font-black text-purple-400">{profile.labHours} HRS</div>
         </div>
       </div>
 
-      {/* PREMIUM CAREER TRACK SELECTION ORCHESTRATOR */}
+      {/* TODAY'S 4-STAGE LEARNING PLAN: CONTINUE VIDEO -> PRACTICE LAB -> MISSION -> AMAN REVIEW */}
+      <div className="p-6 rounded-3xl bg-slate-900/90 border border-cyan-500/30 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <div className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>ROLE-ALIGNED DAILY WORKFLOW</span>
+            </div>
+            <h2 className="text-lg font-mono font-black text-white uppercase">
+              Today's 4-Stage Learning Plan
+            </h2>
+          </div>
+          <span className="text-xs font-mono text-slate-400">
+            Path: <strong className="text-cyan-300">{roleConfig.title}</strong>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* STAGE 1: CONTINUE VIDEO */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                  STEP 1 • VIDEO
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">
+                  {nextVideo?.durationSeconds ? `${Math.round(nextVideo.durationSeconds / 60)}m` : '15m'}
+                </span>
+              </div>
+              <h3 className="text-xs font-mono font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2">
+                {nextVideo ? nextVideo.title : 'Role Overview & Core Concepts'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-sans line-clamp-2">
+                {nextVideo ? nextVideo.description : 'Watch key architectural concepts before starting range commands.'}
+              </p>
+            </div>
+
+            <Link
+              to={nextVideo ? `/video-learning?videoId=${nextVideo.id}` : '/video-learning'}
+              className="w-full py-2.5 px-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all group-hover:border-cyan-400"
+            >
+              <Play className="w-3 h-3 fill-cyan-300" />
+              <span>CONTINUE VIDEO</span>
+            </Link>
+          </div>
+
+          {/* STAGE 2: PRACTICE LAB */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/50 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-400">
+                  STEP 2 • LAB
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">20m</span>
+              </div>
+              <h3 className="text-xs font-mono font-bold text-white group-hover:text-indigo-300 transition-colors line-clamp-2">
+                {roleConfig.recommendedModules[0]?.title || 'Interactive Terminal Sandboxes'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-sans line-clamp-2">
+                Execute live simulated shell commands and verify defensive/offensive outputs.
+              </p>
+            </div>
+
+            <Link
+              to={roleNextAction.route || '/practice'}
+              className="w-full py-2.5 px-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all group-hover:border-indigo-400"
+            >
+              <Terminal className="w-3 h-3" />
+              <span>PRACTICE LAB</span>
+            </Link>
+          </div>
+
+          {/* STAGE 3: TACTICAL MISSION */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  STEP 3 • MISSION
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">25m</span>
+              </div>
+              <h3 className="text-xs font-mono font-bold text-white group-hover:text-emerald-300 transition-colors line-clamp-2">
+                {roleConfig.missions?.[0]?.title || 'Tactical Incident Response'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-sans line-clamp-2">
+                Apply multi-stage procedures to investigate alerts or exploit target vectors.
+              </p>
+            </div>
+
+            <button
+              onClick={handleContinueMission}
+              className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all group-hover:border-emerald-400 cursor-pointer"
+            >
+              <Flag className="w-3 h-3" />
+              <span>TACTICAL MISSION</span>
+            </button>
+          </div>
+
+          {/* STAGE 4: AMAN REVIEW */}
+          <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 transition-all flex flex-col justify-between space-y-3 group">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 border border-purple-500/30 text-purple-400">
+                  STEP 4 • AI REVIEW
+                </span>
+                <span className="text-[10px] font-mono text-slate-500">5m</span>
+              </div>
+              <h3 className="text-xs font-mono font-bold text-white group-hover:text-purple-300 transition-colors line-clamp-2">
+                Autonomous AMAN Feedback
+              </h3>
+              <p className="text-[11px] text-slate-400 font-sans line-clamp-2">
+                Get real-time drill questions, gap analysis, and tailored retention quizzes.
+              </p>
+            </div>
+
+            <button
+              onClick={handleAskAman}
+              className="w-full py-2.5 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all group-hover:border-purple-400 cursor-pointer"
+            >
+              <Bot className="w-3 h-3" />
+              <span>AMAN REVIEW</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* CAREER TRACK ORCHESTRATOR */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -222,9 +423,12 @@ export const DashboardPage: React.FC = () => {
               Career Track Orchestrator
             </h2>
           </div>
-          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/25 uppercase">
-            Premium Feature
-          </span>
+          <Link
+            to="/select-role"
+            className="px-2.5 py-1 rounded text-xs font-mono font-bold bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/25 uppercase transition-colors"
+          >
+            Explore All 11 Roles →
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -244,7 +448,6 @@ export const DashboardPage: React.FC = () => {
                     : 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/60'
                 }`}
               >
-                {/* Background active pulse glow */}
                 {isActive && (
                   <span className="absolute top-0 right-0 w-3 h-3 m-3 bg-emerald-400 rounded-full animate-ping" />
                 )}
@@ -317,13 +520,13 @@ export const DashboardPage: React.FC = () => {
       {/* Global Progress Bar */}
       <GlobalProgressBar />
 
-      {/* Secondary Hub Links */}
+      {/* Secondary Hub Navigation Links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link
           to="/modules"
-          className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
+          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
         >
-          <div className="p-2.5 rounded-lg bg-cyan-950/60 text-cyan-400 group-hover:scale-110 transition-transform">
+          <div className="p-2.5 rounded-xl bg-cyan-950/60 text-cyan-400 group-hover:scale-110 transition-transform">
             <Terminal className="w-4 h-4" />
           </div>
           <span className="font-mono font-bold text-xs text-slate-200">LEARN MODULES</span>
@@ -331,9 +534,9 @@ export const DashboardPage: React.FC = () => {
 
         <Link
           to="/practice"
-          className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
+          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
         >
-          <div className="p-2.5 rounded-lg bg-indigo-950/60 text-indigo-400 group-hover:scale-110 transition-transform">
+          <div className="p-2.5 rounded-xl bg-indigo-950/60 text-indigo-400 group-hover:scale-110 transition-transform">
             <Layers className="w-4 h-4" />
           </div>
           <span className="font-mono font-bold text-xs text-slate-200">PRACTICE LABS</span>
@@ -341,9 +544,9 @@ export const DashboardPage: React.FC = () => {
 
         <Link
           to="/roadmap"
-          className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
+          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-emerald-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
         >
-          <div className="p-2.5 rounded-lg bg-emerald-950/60 text-emerald-400 group-hover:scale-110 transition-transform">
+          <div className="p-2.5 rounded-xl bg-emerald-950/60 text-emerald-400 group-hover:scale-110 transition-transform">
             <Compass className="w-4 h-4" />
           </div>
           <span className="font-mono font-bold text-xs text-slate-200">ROADMAP</span>
@@ -351,9 +554,9 @@ export const DashboardPage: React.FC = () => {
 
         <Link
           to="/learning-path"
-          className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
+          className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition-all flex flex-col items-center text-center space-y-2 group"
         >
-          <div className="p-2.5 rounded-lg bg-amber-950/60 text-amber-400 group-hover:scale-110 transition-transform">
+          <div className="p-2.5 rounded-xl bg-amber-950/60 text-amber-400 group-hover:scale-110 transition-transform">
             <TrendingUp className="w-4 h-4" />
           </div>
           <span className="font-mono font-bold text-xs text-slate-200">SKILL PROGRESS</span>
@@ -363,3 +566,5 @@ export const DashboardPage: React.FC = () => {
     </div>
   );
 };
+
+export default DashboardPage;
