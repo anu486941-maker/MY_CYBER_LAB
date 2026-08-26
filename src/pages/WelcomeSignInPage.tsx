@@ -1,9 +1,9 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Shield, Sparkles } from 'lucide-react';
+import { Shield, Sparkles, AlertTriangle } from 'lucide-react';
 
 export const WelcomeSignInPage: React.FC = () => {
-  const { signInWithGoogle, isAuthLoading } = useApp();
+  const { signInWithGoogle, isAuthLoading, syncErrorMessage } = useApp();
 
   return (
     <div id="welcome-signin" className="min-h-[80vh] flex flex-col items-center justify-center p-4">
@@ -30,6 +30,17 @@ export const WelcomeSignInPage: React.FC = () => {
         <p className="text-slate-300 text-sm font-sans leading-relaxed px-2">
           "Sign in to create your personal cybersecurity learning journey."
         </p>
+
+        {/* Error Alert Display */}
+        {syncErrorMessage && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono text-left flex items-start gap-2.5 shadow-sm animate-fadeIn">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+            <div className="space-y-1">
+              <span className="font-bold block text-amber-200 uppercase tracking-wide text-[11px]">Authentication Notice</span>
+              <p className="text-slate-300 leading-snug">{syncErrorMessage}</p>
+            </div>
+          </div>
+        )}
 
         {/* Secure Authorization Button */}
         <div className="space-y-4 pt-2">
@@ -72,3 +83,4 @@ export const WelcomeSignInPage: React.FC = () => {
     </div>
   );
 };
+

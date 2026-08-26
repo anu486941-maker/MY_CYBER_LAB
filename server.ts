@@ -1591,11 +1591,11 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
 
   // Vite middleware in dev / Static files in production
   if (process.env.NODE_ENV !== 'production') {
-    const isHmrDisabled = process.env.DISABLE_HMR === 'true';
+    const isHmrEnabled = process.env.ENABLE_HMR === 'true';
     const vite = await createViteServer({
       server: { 
         middlewareMode: true,
-        hmr: isHmrDisabled ? false : { server: httpServer }
+        hmr: isHmrEnabled ? { server: httpServer } : false
       },
       appType: 'spa',
     });

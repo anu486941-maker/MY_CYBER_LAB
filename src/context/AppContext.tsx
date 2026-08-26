@@ -1114,14 +1114,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const signInWithGoogle = async () => {
     try {
       setIsAuthLoading(true);
+      setSyncErrorMessage(null);
       setSyncStatus('SYNCING');
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
         // Progress will be loaded via onAuthStateChanged
+        setSyncErrorMessage(null);
       }
     } catch (error: any) {
       console.error('Google Sign-In failed:', error);
-      setSyncErrorMessage(error.message || 'Google Sign-In failed.');
+      let message = error.message || 'Google Sign-In failed.';
+      if (error.code === 'auth/unauthorized-domain') {
+        message = 'Domain not authorized: Please add "my-cyber-lab.vercel.app" to Firebase Console > Authentication > Settings > Authorized domains.';
+      } else if (error.code === 'auth/popup-blocked') {
+        message = 'Pop-up blocked: Please allow pop-ups for this site in your browser to sign in.';
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        message = 'Sign-in window was closed. Please click Sign In to try again.';
+      } else if (error.code === 'auth/configuration-not-found' || error.code === 'auth/invalid-api-key') {
+        message = 'Authentication configuration error: Please verify Firebase Authentication settings.';
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        message = 'Only one sign-in window can be active at a time.';
+      }
+      setSyncErrorMessage(message);
       setSyncStatus('SYNC ERROR');
       setIsAuthLoading(false);
     }
