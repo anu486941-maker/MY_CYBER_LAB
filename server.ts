@@ -1,4 +1,6 @@
 import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
@@ -63,11 +65,36 @@ async function generateContentWithFallback(client: GoogleGenAI, params: any) {
   throw lastError;
 }
 
+const app = express();
+
 async function startServer() {
-  const app = express();
+
   const PORT = 3000;
 
   app.use(express.json());
+
+  app.use(cors());
+
+  // Global rate limiter
+  const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // Limit each IP to 1000 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use(globalLimiter);
+
+  // Stricter rate limiter for AI / terminal execution routes
+  const strictLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute
+    max: 120, // 120 requests per minute
+    message: 'Too many high-cost requests, please slow down.',
+  });
+  app.use('/api/aman', strictLimiter);
+  app.use('/api/terminal', strictLimiter);
+  app.use('/api/investigate', strictLimiter);
+
 
   // Security Hardening Headers Middleware
   app.use((req, res, next) => {
@@ -1581,9 +1608,11 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
     });
   }
 
-  httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT}`);
-  });
+    if (!process.env.VERCEL) {
+    httpServer.listen(PORT, '0.0.0.0', () => {
+      console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
-
 startServer();
+export default app;

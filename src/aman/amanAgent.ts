@@ -353,16 +353,16 @@ export class AmanAgent {
         if (reason === 'USER_CANCELLED' || reason === 'SUPERSEDED_BY_NEW_REQUEST' || reason === 'NAVIGATION_CANCELLED') {
           const rec = timer.finish({
             query: message,
-            executionPath: 'CANCELLED',
+            executionPath: 'LOCAL_FALLBACK',
             executionMode: 'FAST',
-            intentCategory: 'CANCELLED'
+            intentCategory: 'LOCAL_FALLBACK'
           });
           return {
             text: '', // Gracefully stop for intentional aborts
             isLocalFallback: false,
             telemetryId: rec.id,
             perceivedLatencyMs: rec.totalResponseTimeMs,
-            executionPath: 'CANCELLED'
+            executionPath: 'LOCAL_FALLBACK'
           };
         } else if (reason === 'TIMEOUT') {
           console.warn(`[AMAN 4.0 Agent] ${requestId} TIMEOUT - Cloud API fallback engaged`);
