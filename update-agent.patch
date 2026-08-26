@@ -1,0 +1,55 @@
+--- src/aman/amanAgent.ts
++++ src/aman/amanAgent.ts
+@@ -194,6 +194,22 @@
+     // Determine execution mode (FAST vs DEEP)
+     const executionMode: 'FAST' | 'DEEP' = activeMode === 'DEEP_DIVE' || activeMode === 'DEBATE' ? 'DEEP' : 'FAST';
+ 
++    // Offline Check
++    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
++    if (isOffline) {
++      console.warn(`[AMAN 4.0 Agent] ${requestId} Offline mode detected. Bypassing Cloud AI.`);
++      const fallback = generateLocalGuidanceResponse(message, compactContext, context.profile?.language || 'Auto');
++      const rec = timer.finish({ query: message, executionPath: 'LOCAL_FALLBACK', executionMode: 'LOCAL', intentCategory: 'OFFLINE_FALLBACK' });
++      return { text: fallback.fullText, isLocalFallback: true, telemetryId: rec.id, perceivedLatencyMs: rec.totalResponseTimeMs, executionPath: 'LOCAL_FALLBACK' };
++    }
++
++    // Web Research Intent Detection
++    const requiresWebResearch = /cve|latest|recent|news|this week|today|yesterday|happened with|threat intel|advisories/i.test(message);
++    let finalExecutionPath: 'GEMINI_STREAM' | 'WEB_RESEARCH' = requiresWebResearch ? 'WEB_RESEARCH' : 'GEMINI_STREAM';
++    if (requiresWebResearch) {
++      console.log(`[AMAN 4.0 Agent] ${requestId} WEB_RESEARCH intent detected.`);
++    }
++
+     if (onWorkflowStep) {
+       onWorkflowStep({
+         stepNumber: 1,
+@@ -226,7 +242,8 @@
+           history: rollingHistory,
+           contextData: compactContext,
+           mode: activeMode,
+-          executionMode
++          executionMode,
++          useWebResearch: requiresWebResearch
+         }),
+         signal: fetchController.signal
+       });
+@@ -298,15 +315,15 @@
+       if (accumulatedText.trim()) {
+         const rec = timer.finish({
+           query: message,
+-          executionPath: 'GEMINI_STREAM',
++          executionPath: finalExecutionPath,
+           executionMode,
+           intentCategory: 'AI_STREAM_COMPLETION',
+           modelUsed: executionMode === 'DEEP' ? 'gemini-3.7-flash (Deep)' : 'gemini-3.7-flash'
+         });
+         console.log(`${requestId} RESPONSE_COMPLETE`);
+         return {
+           text: accumulatedText,
+           toolCalls,
+           telemetryId: rec.id,
+           perceivedLatencyMs: rec.totalResponseTimeMs,
+-          executionPath: 'GEMINI_STREAM'
++          executionPath: finalExecutionPath
+         };
+       }

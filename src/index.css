@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@media print {
+  /* Hide standard web app UI during print */
+  nav,
+  header,
+  #app-sidebar,
+  #ethical-notice-banner,
+  .no-print,
+  button,
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Optimize page layout for A4 landscape certificate */
+  @page {
+    size: landscape;
+    margin: 0;
+  }
+
+  body {
+    background-color: #030712 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #printable-certificate {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

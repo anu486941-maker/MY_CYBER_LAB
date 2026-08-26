@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents the user's secure profile, learning metrics, completed activities, and credentials",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The authenticated email of the operator"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The display name of the user"
+        },
+        "profile": {
+          "type": "object",
+          "description": "The operator's profile metadata including target role, language preference, learning style, and level metrics"
+        },
+        "learningState": {
+          "type": "object",
+          "description": "The dynamic user learning progress, containing stats like XP, completed counts, scores, and track progress"
+        },
+        "activeCareerTrack": {
+          "type": "string",
+          "description": "The current active career pathway of the operator (ETHICAL_HACKER or SOC_ANALYST)"
+        },
+        "careerProgress": {
+          "type": "object",
+          "description": "The independent progress maps for each distinct career pathway"
+        },
+        "levels": {
+          "type": "array",
+          "description": "The primary curriculum module levels and lesson completed markers"
+        },
+        "missions": {
+          "type": "array",
+          "description": "Active cyber scenarios and task completed states"
+        },
+        "ctfChallenges": {
+          "type": "array",
+          "description": "CTF arenas unlocked states and submitted flags stats"
+        },
+        "achievements": {
+          "type": "array",
+          "description": "Earned reward achievements and milestone credentials"
+        },
+        "skillMasteries": {
+          "type": "array",
+          "description": "Quantitative skill mastery records representing the cognitive understanding of security disciplines"
+        },
+        "mistakes": {
+          "type": "array",
+          "description": "The historical journal logs of incorrect technical decisions and resolutions"
+        },
+        "trainingMode": {
+          "type": "string",
+          "description": "Current cognitive study mode (e.g., MENTOR or EXAM)"
+        },
+        "toolReasoningScores": {
+          "type": "object",
+          "description": "Detailed telemetry scores from command line interactions"
+        },
+        "certificatesList": {
+          "type": "array",
+          "description": "Pre-seeded and dynamically generated completion credentials"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last synchronization event"
+        }
+      },
+      "required": [
+        "email",
+        "profile",
+        "learningState"
+      ]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Top-level collection that acts as the single source of truth for the operator's laboratory progress"
+    }
+  }
+}

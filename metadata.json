@@ -1,0 +1,6 @@
+{
+  "name": "My Cyber Lab",
+  "description": "Premium Autonomous AI Cybersecurity Academy with AMAN Proactive Instructor, Hands-On Sandboxed Cyber Range, and Role-Based Pathways.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,57 @@
+--- src/pages/AiMentorPage.tsx
++++ src/pages/AiMentorPage.tsx
+@@ -125,7 +125,7 @@
+     timestamp: new Date()
+   }]);
+   const [isTyping, setIsTyping] = useState(false);
+-  const [amanStatus, setAmanStatus] = useState<'CONNECTED' | 'SWITCHING' | 'LOCAL_GUIDANCE'>('CONNECTED');
++  const [amanStatus, setAmanStatus] = useState<'CONNECTED' | 'SWITCHING' | 'LOCAL_GUIDANCE' | 'WEB_RESEARCH'>('CONNECTED');
+   const [input, setInput] = useState('');
+   const messagesEndRef = useRef<HTMLDivElement>(null);
+   const inputRef = useRef<HTMLTextAreaElement>(null);
+@@ -481,7 +481,9 @@
+       ));
+ 
+       if (response.isLocalFallback) {
+         setAmanStatus('LOCAL_GUIDANCE');
++      } else if (response.executionPath === 'WEB_RESEARCH') {
++        setAmanStatus('WEB_RESEARCH');
+       } else {
+         setAmanStatus('CONNECTED');
+       }
+@@ -586,13 +588,14 @@
+               </span>
+               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-xs font-mono">
+                 <span className={`w-2 h-2 rounded-full ${
+-                  amanStatus === 'CONNECTED' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse' :
+-                  amanStatus === 'SWITCHING' ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-ping' :
+-                  'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)]'
++                  !isOnline ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' :
++                  amanStatus === 'LOCAL_GUIDANCE' ? 'bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]' :
++                  amanStatus === 'WEB_RESEARCH' ? 'bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)] animate-pulse' :
++                  'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse'
+                 }`} />
+                 <span className="text-slate-300">
+-                  {amanStatus === 'CONNECTED' ? 'AMAN AI — Online & Ready' : 
+-                   amanStatus === 'SWITCHING' ? 'AMAN — Switching AI' : 
+-                   'AMAN — Local Fallback'}
++                  {!isOnline ? 'OFFLINE' : 
++                   amanStatus === 'LOCAL_GUIDANCE' ? 'LOCAL' : 
++                   amanStatus === 'WEB_RESEARCH' ? 'WEB RESEARCH' : 
++                   'ONLINE'}
+                 </span>
+               </div>
+             </div>
+@@ -1014,7 +1017,14 @@
+                             <span>⚡ {msg.latencyTag}</span>
+                             {msg.executionPath && (
+                               <span className="text-[9px] text-slate-400 font-normal">
+-                                ({msg.executionPath === 'TURBO_FAST_PATH' ? 'TURBO' : msg.executionPath})
++                                ({msg.executionPath === 'TURBO_FAST_PATH' ? 'CACHED' : 
++                                  msg.executionPath === 'LOCAL_FALLBACK' ? 'LOCAL KNOWLEDGE' : 
++                                  msg.executionPath === 'GEMINI_STREAM' ? 'CLOUD AI' : 
++                                  msg.executionPath === 'WEB_RESEARCH' ? 'WEB RESEARCH' : 
++                                  msg.executionPath})
+                               </span>
+                             )}
+                           </span>

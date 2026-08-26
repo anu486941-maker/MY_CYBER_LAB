@@ -1,0 +1,21 @@
+--- src/pages/AiMentorPage.tsx
++++ src/pages/AiMentorPage.tsx
+@@ -107,6 +107,20 @@
+   // Teaching Mode State
+   const [activeMode, setActiveMode] = useState<AmanTeachingMode>('TEACH');
+ 
++  // Connectivity State
++  const [isOnline, setIsOnline] = useState<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
++  useEffect(() => {
++    const handleOnline = () => setIsOnline(true);
++    const handleOffline = () => setIsOnline(false);
++    window.addEventListener('online', handleOnline);
++    window.addEventListener('offline', handleOffline);
++    return () => {
++      window.removeEventListener('online', handleOnline);
++      window.removeEventListener('offline', handleOffline);
++    };
++  }, []);
++
+   // Chat State
+   const [messages, setMessages] = useState<ChatMessage[]>([{
