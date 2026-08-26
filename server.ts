@@ -1589,8 +1589,8 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
 
   const httpServer = http.createServer(app);
 
-  // Vite middleware in dev / Static files in production
-  if (process.env.NODE_ENV !== 'production') {
+  // Vite middleware in dev / Static files in standalone production (not on Vercel)
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const isHmrEnabled = process.env.ENABLE_HMR === 'true';
     const vite = await createViteServer({
       server: { 
@@ -1600,7 +1600,7 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -1608,7 +1608,7 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
     });
   }
 
-    if (!process.env.VERCEL) {
+  if (!process.env.VERCEL) {
     httpServer.listen(PORT, '0.0.0.0', () => {
       console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT}`);
     });

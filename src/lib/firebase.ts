@@ -14,13 +14,13 @@ const isAiStudioPreview = typeof window !== 'undefined' && (
 // In AI Studio preview containers, fall back to aiStudioFirebaseConfig unless overridden by VITE_ env vars.
 const activeDefaultConfig = isAiStudioPreview ? aiStudioFirebaseConfig : productionFirebaseConfig;
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || activeDefaultConfig.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || activeDefaultConfig.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || activeDefaultConfig.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || activeDefaultConfig.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || activeDefaultConfig.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || activeDefaultConfig.appId,
+export const firebaseConfig = {
+  apiKey: (import.meta.env.VITE_FIREBASE_API_KEY || activeDefaultConfig.apiKey || '').trim(),
+  authDomain: (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || activeDefaultConfig.authDomain || '').trim(),
+  projectId: (import.meta.env.VITE_FIREBASE_PROJECT_ID || activeDefaultConfig.projectId || '').trim(),
+  storageBucket: (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || activeDefaultConfig.storageBucket || '').trim(),
+  messagingSenderId: (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || activeDefaultConfig.messagingSenderId || '').trim(),
+  appId: (import.meta.env.VITE_FIREBASE_APP_ID || activeDefaultConfig.appId || '').trim(),
 };
 
 // Initialize Firebase App
@@ -51,3 +51,25 @@ if (customDbEnv && customDbEnv !== '(default)' && customDbEnv !== 'default') {
 }
 
 export const db = resolvedDbId ? getFirestore(app, resolvedDbId) : getFirestore(app);
+
+// Safe diagnostic logging in browser console (never logs keys, secrets, or tokens)
+if (typeof window !== 'undefined') {
+  const isKeySet = Boolean(firebaseConfig.apiKey && firebaseConfig.apiKey.length > 0);
+  console.info(
+    `%c[MY CYBER LAB Firebase Config]%c Target Project: %c${firebaseConfig.projectId}%c | Auth Domain: %c${firebaseConfig.authDomain}%c | Firestore DB: %c${resolvedDbId || '(default)'}%c | API Key Present: %c${isKeySet ? 'YES' : 'NO (Required)'}`,
+    'color: #06b6d4; font-weight: bold;',
+    'color: inherit;',
+    'color: #10b981; font-weight: bold;',
+    'color: inherit;',
+    'color: #10b981; font-weight: bold;',
+    'color: inherit;',
+    'color: #10b981; font-weight: bold;',
+    'color: inherit;',
+    isKeySet ? 'color: #10b981; font-weight: bold;' : 'color: #ef4444; font-weight: bold;'
+  );
+  if (!isKeySet && !isAiStudioPreview) {
+    console.warn(
+      '[MY CYBER LAB] Notice: VITE_FIREBASE_API_KEY is not set or empty in production config. Please ensure apiKey is configured in src/lib/firebaseConfig.ts or Vercel Environment Variables.'
+    );
+  }
+}

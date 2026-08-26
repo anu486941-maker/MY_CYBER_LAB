@@ -1122,16 +1122,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSyncErrorMessage(null);
       }
     } catch (error: any) {
-      console.error('Google Sign-In failed:', error);
+      console.error(`Google Sign-In failed [Project: ${auth.app.options.projectId}, AuthDomain: ${auth.app.options.authDomain}]:`, error);
       let message = error.message || 'Google Sign-In failed.';
       if (error.code === 'auth/unauthorized-domain') {
-        message = 'Domain not authorized: Please add "my-cyber-lab.vercel.app" to Firebase Console > Authentication > Settings > Authorized domains.';
+        message = `Domain "${window.location.hostname}" is not authorized on Firebase project "${auth.app.options.projectId}" (${auth.app.options.authDomain}). Please ensure this domain is added under Firebase Console > Authentication > Settings > Authorized domains.`;
+      } else if (error.code === 'auth/invalid-api-key' || error.code === 'auth/api-key-not-valid') {
+        message = 'Invalid or missing Firebase Web API Key. Please verify apiKey in src/lib/firebaseConfig.ts or Vercel Environment Variables.';
       } else if (error.code === 'auth/popup-blocked') {
         message = 'Pop-up blocked: Please allow pop-ups for this site in your browser to sign in.';
       } else if (error.code === 'auth/popup-closed-by-user') {
         message = 'Sign-in window was closed. Please click Sign In to try again.';
-      } else if (error.code === 'auth/configuration-not-found' || error.code === 'auth/invalid-api-key') {
-        message = 'Authentication configuration error: Please verify Firebase Authentication settings.';
+      } else if (error.code === 'auth/configuration-not-found') {
+        message = 'Google Sign-In provider is not enabled in Firebase Console (Authentication > Sign-in method).';
       } else if (error.code === 'auth/cancelled-popup-request') {
         message = 'Only one sign-in window can be active at a time.';
       }
