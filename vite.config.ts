@@ -19,10 +19,14 @@ export default defineConfig(() => {
       include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     },
     server: {
-      // HMR is disabled in cloud dev / container environments to prevent failing WebSocket reconnect loops
-      hmr: process.env.ENABLE_HMR === 'true' ? { overlay: false } : false,
-      // Disable file watching unless explicitly enabled to prevent unnecessary CPU usage
-      watch: process.env.ENABLE_HMR === 'true' ? {} : null,
+      // Respect platform HMR disable flag or production mode; enable on local development
+      hmr: process.env.DISABLE_HMR === 'true' || process.env.NODE_ENV === 'production'
+        ? false
+        : {
+            overlay: true,
+          },
+      // Disable file watching when HMR is explicitly disabled to prevent high CPU load
+      watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
     build: {
       chunkSizeWarningLimit: 800,

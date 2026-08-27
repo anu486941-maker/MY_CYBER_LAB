@@ -65,6 +65,8 @@ export interface UnifiedLearningState {
   // Assessment & Lab Performance
   quizScores: Record<string, number>;
   labScores: Record<string, number>;
+  evidenceLocker?: any[];
+  reportSubmitted?: boolean;
 
   // Unified Next Action
   nextMove: NextMoveRecommendation;

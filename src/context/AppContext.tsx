@@ -110,6 +110,7 @@ interface AppContextType {
   user: User | null;
   isAuthLoading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
 
   // Sync state & indicators
@@ -1182,6 +1183,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Secure Anonymous Guest Sign-In for friction-free beta access
+  const signInAsGuest = async () => {
+    try {
+      setIsAuthLoading(true);
+      setSyncErrorMessage(null);
+      setSyncStatus('SYNCING');
+      const { signInAnonymously } = await import('firebase/auth');
+      const result = await signInAnonymously(auth);
+      if (result.user) {
+        setSyncErrorMessage(null);
+      }
+    } catch (error: any) {
+      console.error('Guest Sign-In failed:', error);
+      setSyncErrorMessage(error?.message || 'Guest Sign-In session handshake failed.');
+      setSyncStatus('SYNC ERROR');
+      setIsAuthLoading(false);
+    }
+  };
+
   // Sign out
   const signOut = async () => {
     try {
@@ -2098,6 +2118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         user: currentUser,
         isAuthLoading,
         signInWithGoogle,
+        signInAsGuest,
         signOut,
         syncStatus,
         isOnline,

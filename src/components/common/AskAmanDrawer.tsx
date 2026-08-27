@@ -12,6 +12,7 @@ import {
   AmanAction 
 } from '../../utils/amanActionDispatcher';
 import { generateLocalGuidanceResponse } from '../../utils/amanLocalGuidance';
+import { runAmanDiagnostic } from '../../utils/amanChatDiagnostic';
 import { AmanVoiceSettingsModal } from './AmanVoiceSettingsModal';
 import { AmanAudioWaveform } from './AmanAudioWaveform';
 import { 
@@ -81,6 +82,108 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
   const [inputVal, setInputVal] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [amanStatus, setAmanStatus] = useState<'CONNECTED' | 'SWITCHING' | 'LOCAL_GUIDANCE'>('CONNECTED');
+  const [healthStatus, setHealthStatus] = useState<'ONLINE' | 'FALLBACK' | 'OFFLINE'>('ONLINE');
+  const [showDiagnosticDetails, setShowDiagnosticDetails] = useState(false);
+  const [healthDetails, setHealthDetails] = useState<{
+    frontend: boolean;
+    backend: boolean;
+    auth: boolean;
+    apiReachable: boolean;
+    geminiAvailable: boolean;
+    fallbackAvailable: boolean;
+    lastErrorClass?: 'Network failure' | 'Authentication failure' | 'API route missing' | 'Rate limit' | 'Backend failure' | 'AI provider failure' | 'Timeout' | 'None';
+  }>({
+    frontend: true,
+    backend: true,
+    auth: true,
+    apiReachable: true,
+    geminiAvailable: true,
+    fallbackAvailable: true,
+    lastErrorClass: 'None'
+  });
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
+
+  const runAmanHealthCheck = async () => {
+    setIsDiagnosing(true);
+    try {
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      let isBackendReachable = false;
+      let geminiStatusOnBackend = false;
+      let fallbackOnBackend = false;
+
+      try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.reachable) {
+            isBackendReachable = true;
+            geminiStatusOnBackend = data.apiServiceStatus?.gemini === 'INITIALIZED';
+            fallbackOnBackend = data.apiServiceStatus?.fallbackAi === 'AVAILABLE';
+          }
+        }
+      } catch (e) {
+        console.warn('Backend health check failed:', e);
+      }
+
+      const isAuthAvailable = !!profile;
+      const diagnosticResult = await runAmanDiagnostic('Hi AMAN');
+      const isChatReachable = diagnosticResult.success;
+      
+      let errorClass: typeof healthDetails.lastErrorClass = 'None';
+      if (!isOnline) {
+        errorClass = 'Network failure';
+      } else if (!isBackendReachable) {
+        errorClass = 'Network failure';
+      } else if (diagnosticResult.failedStage !== 'NONE') {
+        const stage = diagnosticResult.failedStage;
+        const statusCode = diagnosticResult.statusCode;
+        if (statusCode === 401 || statusCode === 403) {
+          errorClass = 'Authentication failure';
+        } else if (statusCode === 404) {
+          errorClass = 'API route missing';
+        } else if (statusCode === 429) {
+          errorClass = 'Rate limit';
+        } else if (statusCode === 500) {
+          errorClass = 'Backend failure';
+        } else if (statusCode && statusCode >= 502) {
+          errorClass = 'AI provider failure';
+        } else if (stage === 'NETWORK_DISPATCH') {
+          errorClass = 'Timeout';
+        } else {
+          errorClass = 'Network failure';
+        }
+      }
+
+      let overallStatus: 'ONLINE' | 'FALLBACK' | 'OFFLINE' = 'ONLINE';
+      if (!isOnline || !isBackendReachable) {
+        overallStatus = 'OFFLINE';
+      } else if (!isChatReachable || !geminiStatusOnBackend) {
+        overallStatus = 'FALLBACK';
+      }
+
+      setHealthStatus(overallStatus);
+      if (overallStatus === 'FALLBACK') {
+        setAmanStatus('LOCAL_GUIDANCE');
+      } else if (overallStatus === 'ONLINE') {
+        setAmanStatus('CONNECTED');
+      }
+
+      setHealthDetails({
+        frontend: isOnline,
+        backend: isBackendReachable,
+        auth: isAuthAvailable,
+        apiReachable: isChatReachable,
+        geminiAvailable: geminiStatusOnBackend && isChatReachable,
+        fallbackAvailable: fallbackOnBackend || true,
+        lastErrorClass: errorClass
+      });
+    } catch (err) {
+      console.error('Diagnostic run failure:', err);
+      setHealthStatus('OFFLINE');
+    } finally {
+      setIsDiagnosing(false);
+    }
+  };
   
   // Voice Controls
   const [isRecording, setIsRecording] = useState(false);
@@ -95,6 +198,11 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
 
   // Authoritative position & next move from UnifiedLearningEngine
   const { position, nextMove } = learningState;
+
+  // Run diagnostic health check on mount
+  useEffect(() => {
+    runAmanHealthCheck();
+  }, []);
 
   // Initialize welcome message once
   useEffect(() => {
@@ -496,16 +604,67 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
         parts: m.parts ? m.parts : [{ text: m.text }]
       }));
 
-      const res = await fetch('/api/aman/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: messageParts ? messageParts : (text ? text.trim() : ''), 
-          history, 
-          contextData: activeContext,
-          mode: coachMode ? 'SOCRATIC' : 'TEACH'
-        })
-      });
+      let attempt = 0;
+      const maxAttempts = 3;
+      let delay = 1000;
+      let res: Response | null = null;
+      let errorClassification = 'None';
+
+      while (attempt < maxAttempts) {
+        try {
+          const controller = new AbortController();
+          const tId = setTimeout(() => controller.abort(), 15000);
+
+          res = await fetch('/api/aman/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              message: messageParts ? messageParts : (text ? text.trim() : ''), 
+              history, 
+              contextData: activeContext,
+              mode: coachMode ? 'SOCRATIC' : 'TEACH'
+            }),
+            signal: controller.signal
+          });
+          clearTimeout(tId);
+
+          if (res.ok) {
+            errorClassification = 'None';
+            break; // Success! Exit loop
+          }
+
+          if (res.status === 401 || res.status === 403) {
+            errorClassification = 'Authentication failure';
+            break; // Terminal
+          } else if (res.status === 404) {
+            errorClassification = 'API route missing';
+            break; // Terminal
+          } else if (res.status === 429) {
+            errorClassification = 'Rate limit';
+            break; // Terminal
+          } else if (res.status >= 500 && res.status < 502) {
+            errorClassification = 'Backend failure';
+          } else if (res.status >= 502) {
+            errorClassification = 'AI provider failure';
+          }
+        } catch (fetchErr: any) {
+          const isTimeout = fetchErr?.name === 'AbortError' || fetchErr === 'DIAGNOSTIC_TIMEOUT_15S';
+          errorClassification = isTimeout ? 'Timeout' : 'Network failure';
+        }
+
+        attempt++;
+        if (attempt < maxAttempts && errorClassification !== 'Authentication failure' && errorClassification !== 'API route missing' && errorClassification !== 'Rate limit') {
+          console.warn(`[AMAN Chat Fetch Retry] Attempt ${attempt} failed with ${errorClassification}. Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        } else {
+          break;
+        }
+      }
+
+      if (!res || !res.ok) {
+        throw new Error(errorClassification);
+      }
 
       if (!res.body) throw new Error('No response stream');
 
@@ -863,15 +1022,25 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
         await handleSend('', functionResponses);
       }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Chat error:', err);
+      const errorMsg = err?.message || 'Network failure';
+      
+      setHealthStatus('FALLBACK');
+      setHealthDetails(prev => ({
+        ...prev,
+        apiReachable: false,
+        geminiAvailable: false,
+        lastErrorClass: (errorMsg === 'Authentication failure' || errorMsg === 'API route missing' || errorMsg === 'Rate limit' || errorMsg === 'Backend failure' || errorMsg === 'AI provider failure' || errorMsg === 'Timeout' || errorMsg === 'Network failure') ? errorMsg : 'Network failure'
+      }));
+
       const userLang = profile.language || 'Auto';
       const localResp = generateLocalGuidanceResponse(text || 'Hello', activeContext, userLang);
       const { cleanText, actions } = parseAmanActions(localResp.fullText);
       setMessages(prev => [...prev, {
         id: `aman-${Date.now()}`,
         sender: 'aman',
-        text: cleanText,
+        text: `[FALLBACK LOCAL AI ACTIVE - ${errorMsg.toUpperCase()}]\n\n` + cleanText,
         actions,
         timestamp: new Date()
       }]);
@@ -1053,6 +1222,101 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
                   {playbackRate === 'slower' ? '0.8x' : playbackRate === 'faster' ? '1.25x' : '1.0x'}
                 </button>
               </div>
+            </div>
+
+            {/* AMAN Visible Diagnostic Status Bar */}
+            <div className="px-3 py-2 bg-slate-950 border-b border-slate-800 flex flex-col font-mono text-[11px] shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-2 h-2 rounded-full ${
+                    healthStatus === 'ONLINE' ? 'bg-emerald-400 animate-pulse' :
+                    healthStatus === 'FALLBACK' ? 'bg-amber-400' : 'bg-red-400'
+                  }`} />
+                  <span className={`font-bold transition-colors ${
+                    healthStatus === 'ONLINE' ? 'text-emerald-400' :
+                    healthStatus === 'FALLBACK' ? 'text-amber-400' : 'text-red-400'
+                  }`}>
+                    {healthStatus === 'ONLINE' ? '🟢 AMAN ONLINE' :
+                     healthStatus === 'FALLBACK' ? '🟡 FALLBACK MODE' :
+                     '🔴 AMAN OFFLINE'}
+                  </span>
+                  {healthDetails.lastErrorClass && healthDetails.lastErrorClass !== 'None' && (
+                    <span className="text-red-400 font-semibold bg-red-950/40 px-1 rounded text-[9px]">
+                      {healthDetails.lastErrorClass}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowDiagnosticDetails(!showDiagnosticDetails)}
+                    className="px-1.5 py-0.5 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 hover:text-slate-200 text-[10px] transition-colors cursor-pointer"
+                  >
+                    {showDiagnosticDetails ? 'Hide Details' : 'Details'}
+                  </button>
+                  <button
+                    onClick={runAmanHealthCheck}
+                    disabled={isDiagnosing}
+                    className="px-2 py-0.5 rounded bg-cyan-950/50 hover:bg-cyan-900/50 border border-cyan-800 text-cyan-300 font-bold text-[10px] transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {isDiagnosing ? (
+                      <>
+                        <Loader2 className="w-2.5 h-2.5 animate-spin text-cyan-400" />
+                        Diagnosing...
+                      </>
+                    ) : (
+                      'Diagnose'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Expandable Health check matrix */}
+              {showDiagnosticDetails && (
+                <div className="mt-2 p-2 rounded bg-slate-950 border border-slate-800/80 space-y-1.5 text-[10px] text-slate-300 leading-normal">
+                  <div className="font-bold text-slate-400 border-b border-slate-900 pb-1 flex justify-between">
+                    <span>DIAGNOSTIC REPORT CARD</span>
+                    <span className="text-cyan-400">v1.2.0</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Frontend reachable:</span>
+                      <span className={healthDetails.frontend ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.frontend ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Backend reachable:</span>
+                      <span className={healthDetails.backend ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.backend ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Authentication:</span>
+                      <span className={healthDetails.auth ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.auth ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Chat reachable:</span>
+                      <span className={healthDetails.apiReachable ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.apiReachable ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Gemini available:</span>
+                      <span className={healthDetails.geminiAvailable ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.geminiAvailable ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500">Fallback AI:</span>
+                      <span className={healthDetails.fallbackAvailable ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                        {healthDetails.fallbackAvailable ? '🟢 ON' : '🔴 OFF'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Messages Scroll Area */}

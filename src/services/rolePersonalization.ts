@@ -734,3 +734,34 @@ export function getAllPersonalizedRoles(): RolePersonalizationConfig[] {
     ROLE_PERSONALIZATION_REGISTRY['beginner-explore']
   ];
 }
+
+export function isValidRole(roleIdOrTitle?: string | null): boolean {
+  if (!roleIdOrTitle || typeof roleIdOrTitle !== 'string' || !roleIdOrTitle.trim()) {
+    return false;
+  }
+  const normalized = roleIdOrTitle.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (ROLE_PERSONALIZATION_REGISTRY[normalized]) {
+    return true;
+  }
+  const byTitle = Object.values(ROLE_PERSONALIZATION_REGISTRY).find(
+    r => r.title.toLowerCase() === roleIdOrTitle.toLowerCase() ||
+         r.id.toLowerCase() === roleIdOrTitle.toLowerCase()
+  );
+  return !!byTitle;
+}
+
+export function normalizeRoleId(roleIdOrTitle?: string | null): string {
+  if (!roleIdOrTitle || typeof roleIdOrTitle !== 'string' || !roleIdOrTitle.trim()) {
+    return 'soc-analyst';
+  }
+  const normalized = roleIdOrTitle.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (ROLE_PERSONALIZATION_REGISTRY[normalized]) {
+    return ROLE_PERSONALIZATION_REGISTRY[normalized].id;
+  }
+  const byTitle = Object.values(ROLE_PERSONALIZATION_REGISTRY).find(
+    r => r.title.toLowerCase() === roleIdOrTitle.toLowerCase() ||
+         r.id.toLowerCase() === roleIdOrTitle.toLowerCase()
+  );
+  return byTitle ? byTitle.id : 'soc-analyst';
+}
+

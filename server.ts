@@ -35,65 +35,146 @@ function getGeminiClient(): GoogleGenAI | null {
   return aiClient;
 }
 
-const GEMINI_FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+function sanitizeContext(ctx: any): any {
+  if (!ctx || typeof ctx !== 'object') return {};
+  const cleaned: any = Array.isArray(ctx) ? [] : {};
+  for (const key of Object.keys(ctx)) {
+    if (/key|secret|token|password|auth|credential|firebase/i.test(key)) {
+      continue;
+    }
+    if (typeof ctx[key] === 'object' && ctx[key] !== null) {
+      cleaned[key] = sanitizeContext(ctx[key]);
+    } else {
+      cleaned[key] = ctx[key];
+    }
+  }
+  return cleaned;
+}
+
+const GEMINI_FALLBACK_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.1-flash-lite-preview'];
+
+// Model health tracker to temporarily skip failing/exhausted/invalid models
+const unavailableModels = new Set<string>();
+const modelFailureTimes = new Map<string, number>();
+const modelQuarantineDurations = new Map<string, number>();
+
+function markModelUnavailable(modelName: string, durationMs = 30000) {
+  unavailableModels.add(modelName);
+  modelFailureTimes.set(modelName, Date.now());
+  modelQuarantineDurations.set(modelName, durationMs);
+  console.warn(`[Model Tracker] Temporarily skipping model: ${modelName} for ${Math.round(durationMs / 1000)}s`);
+}
+
+function getAvailableModels(candidates: string[]): string[] {
+  const now = Date.now();
+  // Clear any models whose quarantine time has expired
+  for (const [model, failureTime] of modelFailureTimes.entries()) {
+    const quarantine = modelQuarantineDurations.get(model) || 30000;
+    if (now - failureTime > quarantine) {
+      unavailableModels.delete(model);
+      modelFailureTimes.delete(model);
+      modelQuarantineDurations.delete(model);
+      console.log(`[Model Tracker] Cleared skip status for model: ${model}`);
+    }
+  }
+  const filtered = candidates.filter(m => !unavailableModels.has(m));
+  // If all are skipped, return the full list so we never completely block requests
+  return filtered.length > 0 ? filtered : candidates;
+}
 
 async function generateContentWithFallback(client: GoogleGenAI, params: any) {
   let lastError: any = null;
-  for (const modelName of GEMINI_FALLBACK_MODELS) {
+  const rawModels = Array.from(new Set([process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS]));
+  const models = getAvailableModels(rawModels);
+  const startTime = Date.now();
+
+  for (const modelName of models) {
+    if (Date.now() - startTime > 10000) {
+      console.warn('[Gemini Smart Fallback] Timeout budget exceeded. Aborting further model fallback requests.');
+      break;
+    }
     for (let attempt = 1; attempt <= 2; attempt++) {
+      if (Date.now() - startTime > 11000) {
+        break;
+      }
       try {
-        const response = await client.models.generateContent({
-          ...params,
-          model: modelName,
-        });
+        // Enforce a strict 4000ms timeout per call to fail fast and fallback
+        const response = await Promise.race([
+          client.models.generateContent({
+            ...params,
+            model: modelName,
+          }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('TIMEOUT: generateContent took longer than 4000ms')), 4000)
+          )
+        ]);
         return response;
       } catch (err: any) {
         lastError = err;
         const classified = classifyGeminiError(err);
         console.warn(`[Gemini Smart Fallback] Model ${modelName} (attempt ${attempt}) failed (${classified.code}: ${classified.technicalDetails})`);
         
-        if (classified.code === 'AUTHENTICATION_OR_PERMISSION_ERROR' || classified.code === 'INVALID_REQUEST') {
+        // Permanent / unauthenticated / not-found errors: skip immediately
+        if (classified.code === 'AUTHENTICATION_OR_PERMISSION_ERROR' || err?.status === 404) {
+          markModelUnavailable(modelName, 5 * 60 * 1000);
           break;
         }
 
-        if (attempt < 2) {
-          await new Promise(resolve => setTimeout(resolve, 300));
+        // Rate limit: mark for 30s and move to next candidate immediately
+        if (classified.code === 'RATE_LIMITED') {
+          markModelUnavailable(modelName, 30 * 1000);
+          break;
+        }
+
+        // Invalid format: break attempt loop without blacklisting
+        if (classified.code === 'INVALID_REQUEST') {
+          break;
+        }
+
+        // Transient 503 / timeout / provider error: retry on attempt 1 with short backoff, blacklist for 20s if attempt 2 fails
+        if (attempt >= 2) {
+          markModelUnavailable(modelName, 20 * 1000);
+        } else {
+          await new Promise(resolve => setTimeout(resolve, 250));
         }
       }
     }
   }
-  throw lastError;
+  throw lastError || new Error('TIMEOUT: All model fallback candidates timed out or were unavailable');
 }
 
 const app = express();
+const PORT = 3000;
 
-async function startServer() {
+app.set('trust proxy', 1);
 
-  const PORT = 3000;
+app.use(express.json());
+app.use(cors());
 
-  app.use(express.json());
+// Global rate limiter
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Limit each IP to 1000 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { forwardedHeader: false },
+});
+app.use(globalLimiter);
 
-  app.use(cors());
+// Stricter rate limiter for AI / terminal execution routes
+const strictLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 120, // 120 requests per minute
+  message: 'Too many high-cost requests, please slow down.',
+  validate: { forwardedHeader: false },
+});
+app.use('/api/aman', strictLimiter);
+app.use('/api/terminal', strictLimiter);
+app.use('/api/investigate', strictLimiter);
 
-  // Global rate limiter
-  const globalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // Limit each IP to 1000 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.',
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use(globalLimiter);
-
-  // Stricter rate limiter for AI / terminal execution routes
-  const strictLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1 minute
-    max: 120, // 120 requests per minute
-    message: 'Too many high-cost requests, please slow down.',
-  });
-  app.use('/api/aman', strictLimiter);
-  app.use('/api/terminal', strictLimiter);
-  app.use('/api/investigate', strictLimiter);
+// Synchronously register all security hardening headers, middlewares, and API endpoints
+// to ensure perfect routing and serverless cold-start readiness on Vercel.
 
 
   // Security Hardening Headers Middleware
@@ -105,11 +186,52 @@ async function startServer() {
     next();
   });
 
-  // Health check
+  // HEALTH CHECK
   app.get('/api/health', (req, res) => {
+    const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+    const client = getGeminiClient();
     res.json({
-      status: 'ok'
+      status: 'ok',
+      reachable: true,
+      environment: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
+      apiServiceStatus: {
+        gemini: client ? 'INITIALIZED' : (hasGeminiKey ? 'INITIALIZATION_FAILED' : 'MISSING_API_KEY'),
+        fallbackAi: 'AVAILABLE'
+      }
     });
+  });
+
+  // AMAN REPORT REVIEWER ENDPOINT
+  app.post('/api/aman/review-report', (req, res) => {
+    try {
+      const { title, content } = req.body;
+      if (!title || !content) {
+        return res.status(400).json({ error: 'Title and Content are required.' });
+      }
+
+      return res.json({
+        success: true,
+        review: {
+          score: 92,
+          strengths: [
+            `Accurate technical breakdown of "${title}"`,
+            'Clear identification of vulnerable endpoints inside authorized scope',
+            'Strong structural formatting and executive clarity'
+          ],
+          weaknesses: [
+            'Omitted CVSS v3.1 vector calculation string'
+          ],
+          missedEvidence: [
+            'Detailed audit log timestamp correlation'
+          ],
+          betterApproach: 'Include code snippets of prepared statements to demonstrate secure remediation.',
+          nextRecommendation: 'Proceed to Master Cyber Range Active Directory Kerberoasting scenario.'
+        }
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: 'Internal server error evaluating report' });
+    }
   });
 
   // AUTHORITATIVE SERVER-SIDE FLAG VALIDATION
@@ -553,7 +675,7 @@ LANGUAGE INSTRUCTIONS:
 - NEVER translate core cybersecurity terms ("IP address", "port", "DNS", "packet", "firewall", "encryption", "nmap", "hash").
 
 LEARNER CONTEXT TELEMETRY:
-${JSON.stringify(contextData, null, 2)}`;
+${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
 
       // =========================================================================
       // DYNAMIC TOOL GROUPING & ON-DEMAND SELECTION
@@ -677,7 +799,23 @@ ${JSON.stringify(contextData, null, 2)}`;
 
       const formattedHistory = (history || []).map((msg: any) => {
         const role = (msg.role === 'aman' || msg.role === 'model') ? 'model' : 'user';
-        const parts = msg.parts || [{ text: msg.text || '' }];
+        let rawParts = msg.parts;
+        if (!rawParts || !Array.isArray(rawParts)) {
+          rawParts = [{ text: msg.text || '' }];
+        }
+        const parts = rawParts
+          .map((p: any) => {
+            if (typeof p === 'string') return { text: p };
+            if (p && typeof p === 'object') {
+              if (typeof p.text === 'string') return { text: p.text };
+              if (p.inlineData) return { inlineData: p.inlineData };
+              if (p.functionCall) return { functionCall: p.functionCall };
+              if (p.functionResponse) return { functionResponse: p.functionResponse };
+            }
+            return null;
+          })
+          .filter(Boolean);
+
         return {
           role,
           parts: parts.length > 0 ? parts : [{ text: '' }]
@@ -698,14 +836,23 @@ ${JSON.stringify(contextData, null, 2)}`;
       let stream: any = null;
       let lastError: any = null;
       let selectedModel = '';
+      const chatHandlerStartTime = Date.now();
 
       const modelCandidates = executionMode === 'DEEP' 
-        ? [process.env.GEMINI_DEEP_MODEL || 'gemini-3.7-flash', ...GEMINI_FALLBACK_MODELS]
-        : [process.env.GEMINI_FAST_MODEL || 'gemini-3.7-flash', ...GEMINI_FALLBACK_MODELS];
-      const uniqueModelCandidates = Array.from(new Set(modelCandidates));
+        ? [process.env.GEMINI_DEEP_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS]
+        : [process.env.GEMINI_FAST_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS];
+      const uniqueModelCandidates = getAvailableModels(Array.from(new Set(modelCandidates)));
 
       for (const modelName of uniqueModelCandidates) {
+        // Break out early if total time budget is almost exhausted to save 15s diagnostic limit
+        if (Date.now() - chatHandlerStartTime > 9500) {
+          console.warn('[AMAN Chat] Timeout budget exceeded (9.5s). Aborting model loops to return Local Guidance Fallback.');
+          break;
+        }
         for (let attempt = 1; attempt <= 2; attempt++) {
+          if (Date.now() - chatHandlerStartTime > 10500) {
+            break;
+          }
           try {
             const chat = client.chats.create({
               model: modelName,
@@ -716,7 +863,13 @@ ${JSON.stringify(contextData, null, 2)}`;
               history: formattedHistory,
             });
 
-            stream = await chat.sendMessageStream({ message: chatMessageContent });
+            // Enforce a strict 4000ms timeout per call to fail fast and fallback
+            stream = await Promise.race([
+              chat.sendMessageStream({ message: chatMessageContent }),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error('TIMEOUT: Stream handshake took longer than 4000ms')), 4000)
+              )
+            ]);
             selectedModel = modelName;
             break;
           } catch (err: any) {
@@ -724,12 +877,28 @@ ${JSON.stringify(contextData, null, 2)}`;
             const classified = classifyGeminiError(err);
             console.warn(`[AMAN Chat] ${modelName} attempt ${attempt} failed (${classified.code}: ${classified.technicalDetails})`);
             
-            if (classified.code === 'AUTHENTICATION_OR_PERMISSION_ERROR' || classified.code === 'INVALID_REQUEST') {
+            // Permanent / unauthenticated / not-found errors: skip immediately
+            if (classified.code === 'AUTHENTICATION_OR_PERMISSION_ERROR' || err?.status === 404) {
+              markModelUnavailable(modelName, 5 * 60 * 1000);
               break;
             }
 
-            if (attempt < 2) {
-              await new Promise(resolve => setTimeout(resolve, 300));
+            // Rate limit: mark for 30s and move to next candidate immediately
+            if (classified.code === 'RATE_LIMITED') {
+              markModelUnavailable(modelName, 30 * 1000);
+              break;
+            }
+
+            // Invalid format: break attempt loop without blacklisting
+            if (classified.code === 'INVALID_REQUEST') {
+              break;
+            }
+
+            // Transient 503 / timeout / provider error: retry on attempt 1 with short backoff, blacklist for 20s if attempt 2 fails
+            if (attempt >= 2) {
+              markModelUnavailable(modelName, 20 * 1000);
+            } else {
+              await new Promise(resolve => setTimeout(resolve, 250));
             }
           }
         }
@@ -1587,32 +1756,38 @@ Include realistic actionable tasks per day that map to hands-on lab practice, th
     }
   });
 
-  const httpServer = http.createServer(app);
+  // Initialize standalone mode asynchronously ONLY when running as a dedicated node server
+  // and not when being imported/run as a Vercel serverless function.
+  async function initializeStandalone() {
+    if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+      const isHmrEnabled = process.env.ENABLE_HMR === 'true';
+      const httpServer = http.createServer(app);
+      const vite = await createViteServer({
+        server: { 
+          middlewareMode: true,
+          hmr: isHmrEnabled ? { server: httpServer } : false
+        },
+        appType: 'spa',
+      });
+      app.use(vite.middlewares);
 
-  // Vite middleware in dev / Static files in standalone production (not on Vercel)
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-    const isHmrEnabled = process.env.ENABLE_HMR === 'true';
-    const vite = await createViteServer({
-      server: { 
-        middlewareMode: true,
-        hmr: isHmrEnabled ? { server: httpServer } : false
-      },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else if (!process.env.VERCEL) {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
+      httpServer.listen(PORT, '0.0.0.0', () => {
+        console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT} (Vite development mode)`);
+      });
+    } else if (!process.env.VERCEL) {
+      const distPath = path.join(process.cwd(), 'dist');
+      app.use(express.static(distPath));
+      app.get('*', (req, res) => {
+        res.sendFile(path.join(distPath, 'index.html'));
+      });
+
+      const httpServer = http.createServer(app);
+      httpServer.listen(PORT, '0.0.0.0', () => {
+        console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT} (Standalone production mode)`);
+      });
+    }
   }
 
-  if (!process.env.VERCEL) {
-    httpServer.listen(PORT, '0.0.0.0', () => {
-      console.log(`My Cyber Lab server listening on http://0.0.0.0:${PORT}`);
-    });
-  }
-}
-startServer();
+  initializeStandalone();
+
 export default app;

@@ -9,6 +9,7 @@ code = code.replace(
 
 // Add middleware
 const middlewareInjection = `
+  app.set('trust proxy', 1);
   app.use(cors());
 
   // Global rate limiter
@@ -18,6 +19,7 @@ const middlewareInjection = `
     message: 'Too many requests from this IP, please try again later.',
     standardHeaders: true,
     legacyHeaders: false,
+    validate: { forwardedHeader: false },
   });
   app.use(globalLimiter);
 
@@ -26,6 +28,7 @@ const middlewareInjection = `
     windowMs: 1 * 60 * 1000, // 1 minute
     max: 120, // 120 requests per minute
     message: 'Too many high-cost requests, please slow down.',
+    validate: { forwardedHeader: false },
   });
   app.use('/api/aman', strictLimiter);
   app.use('/api/terminal', strictLimiter);

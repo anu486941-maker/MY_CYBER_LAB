@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Shield, Sparkles, AlertTriangle } from 'lucide-react';
 
 export const WelcomeSignInPage: React.FC = () => {
-  const { signInWithGoogle, isAuthLoading, syncErrorMessage } = useApp();
+  const { signInWithGoogle, signInAsGuest, isAuthLoading, syncErrorMessage } = useApp();
 
   return (
     <div id="welcome-signin" className="min-h-[80vh] flex flex-col items-center justify-center p-4">
@@ -56,9 +56,17 @@ export const WelcomeSignInPage: React.FC = () => {
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-slate-950" />
-                SIGN IN
+                SIGN IN WITH GOOGLE
               </>
             )}
+          </button>
+
+          <button
+            onClick={signInAsGuest}
+            disabled={isAuthLoading}
+            className="w-full py-3.5 px-6 rounded-xl border border-slate-700/80 bg-slate-800/40 hover:bg-slate-800 text-slate-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-cyan-500/30"
+          >
+            {isAuthLoading ? 'AUTHORIZING SESSION...' : 'START FREE BETA (GUEST MODE)'}
           </button>
           
           <div className="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1.5 uppercase">

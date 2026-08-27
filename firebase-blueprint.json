@@ -76,12 +76,66 @@
         "profile",
         "learningState"
       ]
+    },
+    "BetaFeedback": {
+      "title": "BetaFeedback",
+      "description": "Represents a beta tester's feedback response including ratings and freeform comments",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The authenticated operator UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "The authenticated operator email"
+        },
+        "clarity": {
+          "type": "integer",
+          "description": "Level of Clarity (Scale 1-5)"
+        },
+        "realism": {
+          "type": "integer",
+          "description": "Simulated Lab Realism (Scale 1-5)"
+        },
+        "helpfulness": {
+          "type": "integer",
+          "description": "AI Mentor helpfulness (Scale 1-5)"
+        },
+        "navigation": {
+          "type": "integer",
+          "description": "Navigation & Ease of Use (Scale 1-5)"
+        },
+        "writtenFeedback": {
+          "type": "string",
+          "description": "Freeform written comments or bugs reported"
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp of submission"
+        }
+      },
+      "required": [
+        "userId",
+        "email",
+        "clarity",
+        "realism",
+        "helpfulness",
+        "navigation",
+        "writtenFeedback",
+        "submittedAt"
+      ]
     }
   },
   "firestore": {
     "users/{userId}": {
       "schema": "User",
       "description": "Top-level collection that acts as the single source of truth for the operator's laboratory progress"
+    },
+    "beta_feedback/{feedbackId}": {
+      "schema": "BetaFeedback",
+      "description": "Collection storing the feedback submitted by private and public beta testers"
     }
   }
 }

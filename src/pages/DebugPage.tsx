@@ -11,6 +11,7 @@ import { AmanContextCache } from '../aman/amanContextCache';
 import { AmanPlatformIndex } from '../aman/amanPlatformIndex';
 import { AmanTurboRouter } from '../aman/amanTurboRouter';
 import { AmanAgent } from '../aman/amanAgent';
+import { runAmanDiagnostic } from '../utils/amanChatDiagnostic';
 
 interface DebugLog {
   id: string;
@@ -348,6 +349,22 @@ export const DebugPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={async () => {
+              setLiveEvents(prev => [{ id: String(Date.now()), timestamp: new Date().toLocaleTimeString(), event: 'Running /api/aman/chat lifecycle probe...', status: 'INFO' }, ...prev]);
+              const res = await runAmanDiagnostic();
+              setLiveEvents(prev => [{ 
+                id: String(Date.now()), 
+                timestamp: new Date().toLocaleTimeString(), 
+                event: `Probe finished: ${res.success ? 'SUCCESS (HTTP ' + res.statusCode + ', TTFB ' + res.ttfbMs + 'ms)' : 'FAILED (' + res.failedStage + ' - ' + res.failureLocation + ')'}`, 
+                status: res.success ? 'SUCCESS' : 'ERROR' 
+              }, ...prev]);
+            }}
+            className="px-4 py-2 bg-cyan-950 border border-cyan-500/30 hover:bg-cyan-900 text-xs text-cyan-300 rounded-xl transition-all flex items-center gap-2 font-bold cursor-pointer"
+          >
+            <Activity className="w-3.5 h-3.5 text-cyan-400" />
+            Probe /api/aman/chat
+          </button>
           <button 
             onClick={handleExportSanitizedLogs}
             className="px-4 py-2 bg-slate-900 border border-slate-800 hover:bg-slate-850 text-xs text-slate-200 hover:text-white rounded-xl transition-all flex items-center gap-2 font-semibold cursor-pointer"

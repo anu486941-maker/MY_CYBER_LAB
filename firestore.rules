@@ -22,6 +22,13 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
+    // Beta feedback: Authenticated users can write (create) and read their own feedback, but cannot edit or delete it
+    match /beta_feedback/{feedbackId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // Fallback: deny everything else
     match /{document=**} {
       allow read, write: if false;
