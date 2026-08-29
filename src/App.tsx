@@ -72,6 +72,9 @@ const RealCaseStudyPage = lazy(() => import('./pages/RealCaseStudyPage').then(m 
 const TeamsPage = lazy(() => import('./pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
 const AcquisitionReadinessPage = lazy(() => import('./pages/AcquisitionReadinessPage').then(m => ({ default: m.AcquisitionReadinessPage })));
 const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
+const DualLensSimulatorPage = lazy(() => import('./pages/DualLensSimulatorPage').then(m => ({ default: m.DualLensSimulatorPage })));
+const AiWargameArenaPage = lazy(() => import('./pages/AiWargameArenaPage').then(m => ({ default: m.AiWargameArenaPage })));
+const DemoPage = lazy(() => import('./pages/DemoPage').then(m => ({ default: m.DemoPage })));
 const DebugPage = lazy(() => import('./pages/DebugPage').then(m => ({ default: m.DebugPage })));
 
 const RoleGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -241,6 +244,10 @@ const AppContent: React.FC = () => {
                           <Route path="/buyer-readiness" element={<AcquisitionReadinessPage />} />
                           <Route path="/admin" element={<AdminPage />} />
                           <Route path="/owner" element={<AdminPage />} />
+                          <Route path="/dual-lens" element={<DualLensSimulatorPage />} />
+                          <Route path="/live-battle" element={<DualLensSimulatorPage />} />
+                          <Route path="/wargame" element={<AiWargameArenaPage />} />
+                          <Route path="/demo" element={<DemoPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/debug" element={import.meta.env.DEV ? <DebugPage /> : <Navigate to="/dashboard" replace />} />
                           <Route path="*" element={<Navigate to="/dashboard" replace />} />

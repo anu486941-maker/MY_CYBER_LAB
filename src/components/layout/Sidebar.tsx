@@ -13,6 +13,7 @@ import {
   Server,
   Trophy,
   Building2,
+  Eye,
   Bot,
   CalendarCheck,
   GitBranch,
@@ -71,6 +72,8 @@ const SECONDARY_NAV_ITEMS: { category: string; items: NavItem[] }[] = [
   {
     category: 'TACTICAL SCENARIOS',
     items: [
+      { name: 'Dual-Lens Telemetry', path: '/dual-lens', icon: Eye, badge: 'VS LIVE', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
+      { name: 'AI Wargame Arena', path: '/wargame', icon: Flame, badge: 'MUTATING', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
       { name: 'Job Simulation', path: '/career-simulation', icon: Briefcase, badge: 'CAREER', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },
       { name: 'Command Center', path: '/command-center', icon: Zap, badge: '5.0 PRO', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
       { name: 'Live Incidents', path: '/live-incidents', icon: ShieldAlert, badge: 'UNSOLVED', badgeColor: 'bg-red-950 text-red-300 border-red-500/40' },
@@ -105,6 +108,7 @@ const SECONDARY_NAV_ITEMS: { category: string; items: NavItem[] }[] = [
   {
     category: 'RESOURCES & SETTINGS',
     items: [
+      { name: 'Buyer Demo', path: '/demo', icon: Building2, badge: 'DEMO', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },
       { name: 'Acquisition Portal', path: '/acquisition', icon: Building2, badge: 'BUYER', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
       { name: 'Admin Control', path: '/admin', icon: ShieldAlert, badge: 'OWNER', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
       { name: 'AI Study Plan', path: '/ai-study-plan', icon: CalendarCheck },
