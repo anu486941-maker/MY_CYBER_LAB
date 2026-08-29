@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AppProvider, useApp } from './context/AppContext';
 import { isValidRole } from './services/rolePersonalization';
 import { EthicalNoticeBanner } from './components/layout/EthicalNoticeBanner';
@@ -278,6 +279,7 @@ const AppContent: React.FC = () => {
 export const App: React.FC = () => {
   return (
     <AppProvider>
+      <Analytics />
       <AppContent />
     </AppProvider>
   );
