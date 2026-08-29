@@ -15,13 +15,22 @@ export interface PracticeLab {
     | 'CRYPTOGRAPHY'
     | 'WIRELESS SECURITY'
     | 'THREAT HUNTING'
-    | 'PYTHON SECURITY AUTOMATION';
+    | 'PYTHON SECURITY AUTOMATION'
+    | 'SECURITY FUNDAMENTALS';
   title: string;
   difficulty: 'Beginner' | 'Intermediate' | 'Hard' | 'Advanced';
   estimatedTime: string;
   xpReward: number;
   objective: string;
   scenario: string;
+  conceptExplanation?: string;
+  demonstration?: string;
+  careerRelevance?: string;
+  prerequisites?: string[];
+  skillsTrained?: string[];
+  whatYouWillAccomplish?: string[];
+  rulesOfEngagement: string;
+  ethicalScopeNotice?: string;
   targetEnvironment: {
     hostName: string;
     ipAddress: string;
@@ -30,7 +39,6 @@ export interface PracticeLab {
   };
   knownInformation: string[];
   unknownInformation: string[];
-  rulesOfEngagement: string;
   startingPoint: string;
   availableTools: string[];
   tasks: {
@@ -40,14 +48,25 @@ export interface PracticeLab {
     expectedValue: string;
     isCompleted?: boolean;
     mitreTechnique: string;
+    explanation?: string;
   }[];
   hints: {
     level: number;
     title: string;
     text: string;
     xpPenalty: number;
+    hintType?: 'Conceptual' | 'Directional' | 'Command' | 'Detailed' | 'Walkthrough';
   }[];
   mitreTechniques: string[];
+  debrief?: {
+    whatYouLearned: string[];
+    skillsImproved: string[];
+    conceptsUsed: string[];
+    realWorldApplication: string;
+    defensivePerspective: string;
+    nextRecommendedStep: string;
+    nextRoute: string;
+  };
 }
 
 export const PRACTICE_LABS_HUB_DATA: PracticeLab[] = [

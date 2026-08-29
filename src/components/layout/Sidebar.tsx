@@ -12,6 +12,7 @@ import {
   Terminal,
   Server,
   Trophy,
+  Building2,
   Bot,
   CalendarCheck,
   GitBranch,
@@ -57,10 +58,10 @@ interface NavItem {
 
 const PRIMARY_NAV_ITEMS: NavItem[] = [
   { name: 'Home', path: '/dashboard', icon: Home },
-  { name: 'Learn', path: '/modules', icon: Terminal, badge: 'MODULES', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
-  { name: 'Video Hub', path: '/video-learning', icon: Video, badge: 'VIDEO', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
-  { name: 'Skill Library', path: '/skill-library', icon: BookOpen, badge: 'PHASE 6', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
-  { name: 'Labs', path: '/practice', icon: Layers, badge: 'PRACTICE', badgeColor: 'bg-indigo-950 text-indigo-300 border-indigo-500/40' },
+  { name: 'Video Academy', path: '/academy', icon: Video, badge: 'ACADEMY', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
+  { name: 'Cyber Labs', path: '/modules', icon: Terminal, badge: 'MODULES', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
+  { name: 'Practice Labs', path: '/practice', icon: Layers, badge: 'PRACTICE', badgeColor: 'bg-indigo-950 text-indigo-300 border-indigo-500/40' },
+  { name: 'Skill Library', path: '/skill-library', icon: BookOpen, badge: 'SKILLS', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
   { name: 'Roadmap', path: '/roadmap', icon: Compass, badge: 'CAREER', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },
   { name: 'AMAN AI', path: '/ai-mentor', icon: Bot, badge: 'MENTOR', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
   { name: 'Progress', path: '/learning-path', icon: GitBranch, badge: 'LEVELS', badgeColor: 'bg-amber-950 text-amber-300 border-amber-500/40' },
@@ -70,6 +71,7 @@ const SECONDARY_NAV_ITEMS: { category: string; items: NavItem[] }[] = [
   {
     category: 'TACTICAL SCENARIOS',
     items: [
+      { name: 'Job Simulation', path: '/career-simulation', icon: Briefcase, badge: 'CAREER', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },
       { name: 'Command Center', path: '/command-center', icon: Zap, badge: '5.0 PRO', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
       { name: 'Live Incidents', path: '/live-incidents', icon: ShieldAlert, badge: 'UNSOLVED', badgeColor: 'bg-red-950 text-red-300 border-red-500/40' },
       { name: 'Investigation Center', path: '/investigation-center', icon: Shield, badge: 'PHASE 5', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
@@ -103,6 +105,8 @@ const SECONDARY_NAV_ITEMS: { category: string; items: NavItem[] }[] = [
   {
     category: 'RESOURCES & SETTINGS',
     items: [
+      { name: 'Acquisition Portal', path: '/acquisition', icon: Building2, badge: 'BUYER', badgeColor: 'bg-cyan-950 text-cyan-300 border-cyan-500/40' },
+      { name: 'Admin Control', path: '/admin', icon: ShieldAlert, badge: 'OWNER', badgeColor: 'bg-rose-950 text-rose-300 border-rose-500/40' },
       { name: 'AI Study Plan', path: '/ai-study-plan', icon: CalendarCheck },
       { name: 'Security Report AI', path: '/security-report', icon: FileText },
       { name: 'Evidence Locker', path: '/evidence-locker', icon: FolderGit2, badge: 'ACE', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },

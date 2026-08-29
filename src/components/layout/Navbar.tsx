@@ -101,6 +101,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
               DASHBOARD
             </Link>
             <Link
+              to="/academy"
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                location.pathname === '/academy' || location.pathname.startsWith('/video-learning')
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              ACADEMY
+            </Link>
+            <Link
               to="/roadmap"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
                 location.pathname === '/roadmap' || location.pathname === '/learning-path'

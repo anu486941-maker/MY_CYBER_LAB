@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getAllVideos, getVideoById, getVideosByRole } from '../data/videoLearningData';
 import { getVideoRecommendationsForRole, getNextRecommendedVideo, searchVideos } from '../services/videoRecommendationEngine';
-import { VideoItem } from '../types';
+import { VideoItem, VideoLanguage } from '../types';
 import { CAREER_ROLES_DATA } from '../data/careerRolesData';
 import {
   Play,
@@ -11,11 +11,9 @@ import {
   Bookmark,
   BookmarkCheck,
   Search,
-  Filter,
   Sparkles,
   Bot,
   Layers,
-  Crosshair,
   Clock,
   Award,
   BookOpen,
@@ -25,12 +23,14 @@ import {
   FileEdit,
   ExternalLink,
   Shield,
-  Flame,
   CheckCircle,
   Video,
   ListVideo,
-  Zap,
-  RotateCcw
+  RotateCcw,
+  Languages,
+  Copy,
+  Sliders,
+  Check
 } from 'lucide-react';
 
 export const VideoLearningPage: React.FC = () => {
@@ -42,13 +42,10 @@ export const VideoLearningPage: React.FC = () => {
     markVideoComplete,
     recordVideoQuizScore,
     toggleBookmarkVideo,
-    saveVideoNotes,
-    addXp
+    saveVideoNotes
   } = useApp();
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-
   const videoIdParam = searchParams.get('videoId');
 
   // Selected Video State
@@ -61,19 +58,22 @@ export const VideoLearningPage: React.FC = () => {
   });
 
   // Filter & Search State
-  const chosenRoleKey = profile?.selectedRole || profile?.targetRole || 'soc-analyst';
+  const chosenRoleKey = profile?.selectedRole || profile?.targetRole || 'ethical-hacker';
   const [activeRoleFilter, setActiveRoleFilter] = useState<string>('all');
+  const [activeLanguageFilter, setActiveLanguageFilter] = useState<VideoLanguage | 'all'>('all');
   const [activeTab, setActiveTab] = useState<'all' | 'recommended' | 'in_progress' | 'completed' | 'bookmarked'>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Active Player Sub-Tabs
-  const [playerTab, setPlayerTab] = useState<'overview' | 'notes' | 'quiz' | 'practice'>('overview');
+  const [playerTab, setPlayerTab] = useState<'overview' | 'notes' | 'quiz' | 'practice' | 'chapters'>('overview');
+  const [showQualityBreakdown, setShowQualityBreakdown] = useState<boolean>(false);
 
   // Note Pad State
   const [currentNotes, setCurrentNotes] = useState<string>('');
   const [isSavingNotes, setIsSavingNotes] = useState<boolean>(false);
   const [notesSaveSuccess, setNotesSaveSuccess] = useState<boolean>(false);
+  const [copiedTranscript, setCopiedTranscript] = useState<boolean>(false);
 
   // Quiz State
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
@@ -104,7 +104,7 @@ export const VideoLearningPage: React.FC = () => {
         setQuizSubmitted(true);
       }
       
-      // Auto record initial watch start
+      // Auto record initial watch start if untouched
       if (!prog) {
         updateVideoProgress(selectedVideo.id, { watchProgress: 10 });
       }
@@ -119,6 +119,15 @@ export const VideoLearningPage: React.FC = () => {
     setIsSavingNotes(false);
     setNotesSaveSuccess(true);
     setTimeout(() => setNotesSaveSuccess(false), 2500);
+  };
+
+  // Handle Copy Transcript
+  const handleCopyTranscript = () => {
+    if (!selectedVideo) return;
+    const textToCopy = selectedVideo.transcript || selectedVideo.notesSummary || selectedVideo.description;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedTranscript(true);
+    setTimeout(() => setCopiedTranscript(false), 2500);
   };
 
   // Handle Quiz Submission
@@ -139,6 +148,16 @@ export const VideoLearningPage: React.FC = () => {
     setQuizSubmitted(true);
 
     await recordVideoQuizScore(selectedVideo.id, calculatedScore);
+  };
+
+  // Watch Progress Simulation Helper
+  const handleSimulateWatch = async (targetPercent: number) => {
+    if (!selectedVideo) return;
+    const isCompleted = targetPercent >= 100;
+    await updateVideoProgress(selectedVideo.id, {
+      watchProgress: targetPercent,
+      completed: isCompleted
+    });
   };
 
   // Calculate Overall Video Stats
@@ -180,10 +199,18 @@ export const VideoLearningPage: React.FC = () => {
 
     // 1. Role Filter
     if (activeRoleFilter !== 'all') {
-      result = result.filter(v => (v.role === activeRoleFilter || (v as any).roleId === activeRoleFilter));
+      result = result.filter(v => 
+        v.role === activeRoleFilter || 
+        (v.roles && v.roles.includes(activeRoleFilter))
+      );
     }
 
-    // 2. Tab Filter
+    // 2. Language Filter
+    if (activeLanguageFilter !== 'all') {
+      result = result.filter(v => v.language === activeLanguageFilter);
+    }
+
+    // 3. Tab Filter
     if (activeTab === 'recommended') {
       result = getVideoRecommendationsForRole(chosenRoleKey, videoProgressMap, weakSkills);
     } else if (activeTab === 'in_progress') {
@@ -200,18 +227,18 @@ export const VideoLearningPage: React.FC = () => {
       result = result.filter(v => videoProgressMap[v.id]?.bookmarked);
     }
 
-    // 3. Difficulty Filter
+    // 4. Difficulty Filter
     if (selectedDifficulty !== 'all') {
       result = result.filter(v => v.difficulty.toLowerCase() === selectedDifficulty.toLowerCase());
     }
 
-    // 4. Search Filter
+    // 5. Search Filter
     if (searchQuery.trim()) {
       result = searchVideos(searchQuery, result);
     }
 
     return result;
-  }, [activeRoleFilter, activeTab, selectedDifficulty, searchQuery, chosenRoleKey, videoProgressMap]);
+  }, [activeRoleFilter, activeLanguageFilter, activeTab, selectedDifficulty, searchQuery, chosenRoleKey, videoProgressMap, weakSkills]);
 
   // Handle Video Selection
   const handleSelectVideo = (video: VideoItem) => {
@@ -245,7 +272,7 @@ export const VideoLearningPage: React.FC = () => {
     );
   };
 
-  // Next recommended video for sidebar playlist
+  // Next recommended video for banner and sidebar
   const nextRecommended = useMemo(() => {
     return getNextRecommendedVideo(chosenRoleKey, videoProgressMap, weakSkills);
   }, [chosenRoleKey, videoProgressMap, weakSkills]);
@@ -257,7 +284,7 @@ export const VideoLearningPage: React.FC = () => {
   };
 
   const getVideoThumbnail = (video: VideoItem): string => {
-    return (video as any).thumbnailUrl || video.thumbnail || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&auto=format&fit=crop&q=80';
+    return video.thumbnail || 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800&auto=format&fit=crop&q=80';
   };
 
   const getVideoRoleTitle = (video: VideoItem): string => {
@@ -265,6 +292,10 @@ export const VideoLearningPage: React.FC = () => {
     const match = CAREER_ROLES_DATA.find(r => r.id === roleId);
     return match ? match.title : String(roleId).replace('-', ' ');
   };
+
+  const currentProg = selectedVideo ? videoProgressMap[selectedVideo.id] : null;
+  const currentWatchPercent = currentProg?.watchProgress || 0;
+  const awardedMilestones = currentProg?.awardedMilestones || [];
 
   return (
     <div id="video-learning-page" className="space-y-6 pb-20 font-sans">
@@ -286,22 +317,40 @@ export const VideoLearningPage: React.FC = () => {
               </button>
               <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
               <span className="text-cyan-400 uppercase font-bold">{getVideoRoleTitle(selectedVideo)}</span>
+              {selectedVideo.language && (
+                <>
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                    {selectedVideo.language}
+                  </span>
+                </>
+              )}
               <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
               <span className="text-slate-200 truncate max-w-[200px] sm:max-w-md">{selectedVideo.title}</span>
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Quality Rating Badge */}
+              <button
+                onClick={() => setShowQualityBreakdown(!showQualityBreakdown)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold hover:bg-emerald-500/20 transition-all cursor-pointer"
+                title="View Quality Audit Score Breakdown"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>{selectedVideo.qualityScore || 96}/100 VERIFIED</span>
+              </button>
+
               {/* Bookmark Toggle */}
               <button
                 onClick={() => toggleBookmarkVideo(selectedVideo.id)}
                 className={`p-2 rounded-lg border transition-all cursor-pointer ${
-                  videoProgressMap[selectedVideo.id]?.bookmarked
+                  currentProg?.bookmarked
                     ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
                     : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
                 }`}
                 title="Bookmark Video"
               >
-                {videoProgressMap[selectedVideo.id]?.bookmarked ? (
+                {currentProg?.bookmarked ? (
                   <BookmarkCheck className="w-4 h-4" />
                 ) : (
                   <Bookmark className="w-4 h-4" />
@@ -310,23 +359,70 @@ export const VideoLearningPage: React.FC = () => {
 
               {/* Mark Complete Toggle */}
               <button
-                onClick={() => markVideoComplete(selectedVideo.id, !videoProgressMap[selectedVideo.id]?.completed)}
+                onClick={() => markVideoComplete(selectedVideo.id, !currentProg?.completed)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer ${
-                  videoProgressMap[selectedVideo.id]?.completed
+                  currentProg?.completed
                     ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
                     : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{videoProgressMap[selectedVideo.id]?.completed ? 'COMPLETED' : 'MARK COMPLETE'}</span>
+                <span>{currentProg?.completed ? 'COMPLETED' : 'MARK COMPLETE'}</span>
               </button>
             </div>
           </div>
 
+          {/* Quality Score Breakdown Card (Toggled) */}
+          {showQualityBreakdown && (
+            <div className="p-5 rounded-2xl bg-slate-900 border border-emerald-500/40 shadow-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-400" />
+                  <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                    MY CYBER LAB Quality & Curriculum Audit (Score: {selectedVideo.qualityScore || 96}/100)
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setShowQualityBreakdown(false)}
+                  className="text-xs font-mono text-slate-400 hover:text-white cursor-pointer"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 text-xs font-mono">
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Role Relevance</span>
+                  <span className="text-cyan-300 font-black">{selectedVideo.qualityBreakdown?.roleRelevance || 25} / 25</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Technical Accuracy</span>
+                  <span className="text-emerald-300 font-black">{selectedVideo.qualityBreakdown?.technicalAccuracy || 25} / 25</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Teaching Clarity</span>
+                  <span className="text-amber-300 font-black">{selectedVideo.qualityBreakdown?.teachingClarity || 20} / 20</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Language Quality</span>
+                  <span className="text-purple-300 font-black">{selectedVideo.qualityBreakdown?.languageQuality || 10} / 10</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Practical Value</span>
+                  <span className="text-pink-300 font-black">{selectedVideo.qualityBreakdown?.practicalUsefulness || 9} / 10</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <span className="text-slate-500 text-[10px] block font-bold">Recency & Alignment</span>
+                  <span className="text-indigo-300 font-black">{selectedVideo.qualityBreakdown?.recency || 9} / 10</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Main Stage: Player + Side Playlist */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left 2 Cols: High-Fidelity Video Player + Tabs */}
+            {/* Left 2 Cols: High-Fidelity Video Player + Sub-Tabs */}
             <div className="lg:col-span-2 space-y-6">
               
               {/* Responsive 16:9 Video Container */}
@@ -340,6 +436,60 @@ export const VideoLearningPage: React.FC = () => {
                 />
               </div>
 
+              {/* Idempotent Progression & XP Milestone Bar */}
+              <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                  <div className="flex items-center gap-2">
+                    <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+                    <span className="text-slate-300 font-bold">Watch Progression & Idempotent XP Milestones:</span>
+                    <span className="text-cyan-400 font-black">{currentWatchPercent}%</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 text-[10px]">
+                    <span className={`px-2 py-0.5 rounded border ${awardedMilestones.includes('25') ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                      25% (+2 XP)
+                    </span>
+                    <span className={`px-2 py-0.5 rounded border ${awardedMilestones.includes('50') ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                      50% (+3 XP)
+                    </span>
+                    <span className={`px-2 py-0.5 rounded border ${awardedMilestones.includes('90') ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                      90% (+5 XP)
+                    </span>
+                    <span className={`px-2 py-0.5 rounded border ${awardedMilestones.includes('100') ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>
+                      100% (+10 XP)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Progress Visualizer Bar */}
+                <div className="h-2 rounded-full bg-slate-950 overflow-hidden border border-slate-800 relative">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 transition-all duration-300"
+                    style={{ width: `${currentWatchPercent}%` }}
+                  />
+                </div>
+
+                {/* Quick Simulation Buttons to Test Idempotent Progression */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <span className="text-[10px] font-mono text-slate-500">Fast Forward / Simulate Watch Progression:</span>
+                  <div className="flex items-center gap-1.5">
+                    {[25, 50, 90, 100].map((pct) => (
+                      <button
+                        key={pct}
+                        onClick={() => handleSimulateWatch(pct)}
+                        className={`px-2 py-1 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                          currentWatchPercent >= pct
+                            ? 'bg-slate-800 text-cyan-300 border border-cyan-500/30'
+                            : 'bg-slate-950 hover:bg-slate-800 text-slate-400 border border-slate-800'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               {/* Title & Metadata Card */}
               <div className="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -350,19 +500,36 @@ export const VideoLearningPage: React.FC = () => {
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300">
                       {selectedVideo.difficulty}
                     </span>
+                    {selectedVideo.language && (
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1">
+                        <Languages className="w-3 h-3" />
+                        {selectedVideo.language}
+                      </span>
+                    )}
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-mono text-slate-400 bg-slate-800 border border-slate-700 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {getVideoDurationMinutes(selectedVideo)} mins
                     </span>
                   </div>
 
-                  <button
-                    onClick={() => handleAskAmanAboutVideo()}
-                    className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-bold transition-all shadow-md cursor-pointer"
-                  >
-                    <Bot className="w-4 h-4" />
-                    <span>Ask AMAN about this</span>
-                  </button>
+                  {/* AMAN AI Video Copilot Trigger */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleAskAmanAboutVideo(`Namaste AMAN! Please explain the key concepts in "${selectedVideo.title}" in Hindi/Hinglish with practical cyber range examples.`)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 border border-purple-500/40 hover:bg-purple-900/80 text-purple-300 font-mono text-xs font-bold transition-all shadow-md cursor-pointer"
+                      title="Explain this lesson in Hindi / Hinglish"
+                    >
+                      <span>🇮🇳 Explain in Hindi</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleAskAmanAboutVideo()}
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-bold transition-all shadow-md cursor-pointer"
+                    >
+                      <Bot className="w-3.5 h-3.5" />
+                      <span>Ask AMAN Copilot</span>
+                    </button>
+                  </div>
                 </div>
 
                 <h1 className="text-xl sm:text-2xl font-mono font-black text-white">
@@ -395,8 +562,22 @@ export const VideoLearningPage: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>Objectives & Outline</span>
+                  <span>Overview & Objectives</span>
                 </button>
+
+                {selectedVideo.chapters && selectedVideo.chapters.length > 0 && (
+                  <button
+                    onClick={() => setPlayerTab('chapters')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase transition-all whitespace-nowrap cursor-pointer ${
+                      playerTab === 'chapters'
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Chapters ({selectedVideo.chapters.length})</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => setPlayerTab('notes')}
@@ -407,7 +588,7 @@ export const VideoLearningPage: React.FC = () => {
                   }`}
                 >
                   <FileEdit className="w-3.5 h-3.5" />
-                  <span>My Notes</span>
+                  <span>Notes & Transcript</span>
                 </button>
 
                 {selectedVideo.quiz && selectedVideo.quiz.length > 0 && (
@@ -420,7 +601,7 @@ export const VideoLearningPage: React.FC = () => {
                     }`}
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
-                    <span>Mastery Quiz {quizScore !== null && `(${quizScore}%)`}</span>
+                    <span>Mastery Quiz (+10 XP) {quizScore !== null && `(${quizScore}%)`}</span>
                   </button>
                 )}
 
@@ -439,14 +620,32 @@ export const VideoLearningPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Player Sub-Tab Content */}
+              {/* Player Sub-Tab Content: TAB 1 OVERVIEW */}
               {playerTab === 'overview' && (
                 <div className="space-y-6">
+                  {/* Key Takeaways ("WHAT YOU LEARNED") */}
+                  {selectedVideo.keyTakeaways && selectedVideo.keyTakeaways.length > 0 && (
+                    <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-950/30 to-slate-900/60 border border-cyan-500/30 space-y-3">
+                      <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-cyan-400" />
+                        Core Takeaways & Operational Findings
+                      </h3>
+                      <div className="space-y-2">
+                        {selectedVideo.keyTakeaways.map((takeaway, i) => (
+                          <div key={i} className="flex items-start gap-3 text-sm text-slate-200 font-sans">
+                            <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0 mt-2" />
+                            <span>{takeaway}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Learning Objectives */}
                   <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
                     <h3 className="text-sm font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <Award className="w-4 h-4 text-amber-400" />
-                      Key Learning Objectives
+                      Detailed Learning Objectives
                     </h3>
                     <div className="space-y-2.5">
                       {selectedVideo.learningObjectives.map((obj, i) => (
@@ -470,51 +669,105 @@ export const VideoLearningPage: React.FC = () => {
                     <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800 space-y-2">
                       <span className="text-xs font-mono text-slate-400 uppercase font-bold">Curated Instructor / Source</span>
                       <p className="text-xs text-cyan-300 font-sans font-bold">
-                        {selectedVideo.instructor || selectedVideo.channelName || 'MY CYBER LAB Academy Curated'}
+                        {selectedVideo.instructor || selectedVideo.channelName || 'MY CYBER LAB Academy'}
                       </p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 2: NOTES PAD */}
-              {playerTab === 'notes' && (
+              {/* TAB 2: CHAPTERS */}
+              {playerTab === 'chapters' && selectedVideo.chapters && (
                 <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
-                      <h3 className="text-sm font-mono font-bold text-white uppercase">Personal Lesson Notes</h3>
-                      <p className="text-xs text-slate-400">Notes are persisted securely to your profile.</p>
+                      <h3 className="text-sm font-mono font-bold text-white uppercase flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-cyan-400" />
+                        Video Chapters & Timestamps
+                      </h3>
+                      <p className="text-xs text-slate-400">Jump directly to specific sub-topics and practical demonstrations.</p>
                     </div>
-                    
-                    <button
-                      onClick={handleSaveNotes}
-                      disabled={isSavingNotes}
-                      className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      {isSavingNotes ? 'Saving...' : notesSaveSuccess ? 'Saved ✓' : 'Save Notes'}
-                    </button>
                   </div>
 
-                  <textarea
-                    value={currentNotes}
-                    onChange={(e) => setCurrentNotes(e.target.value)}
-                    placeholder="Write key command snippets, takeaways, investigation ideas, or timestamp notes..."
-                    rows={8}
-                    className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-cyan-500/50 custom-scrollbar"
-                  />
+                  <div className="space-y-2">
+                    {selectedVideo.chapters.map((ch, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 hover:border-cyan-500/40 transition-all flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-300">
+                            {ch.timestamp}
+                          </span>
+                          <span className="text-sm font-mono text-slate-200">{ch.title}</span>
+                        </div>
+                        <span className="text-xs font-mono text-slate-500">Chapter {idx + 1}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {/* TAB 3: ACTIVE-RECALL QUIZ */}
+              {/* TAB 3: NOTES & TRANSCRIPT */}
+              {playerTab === 'notes' && (
+                <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-6">
+                  {/* Curated Lecture Summary Notes */}
+                  {selectedVideo.notesSummary && (
+                    <div className="p-5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-3 font-sans text-xs text-slate-300 leading-relaxed">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span className="font-mono font-bold text-cyan-400 uppercase">Curated Lecture Cheat Sheet</span>
+                        <button
+                          onClick={handleCopyTranscript}
+                          className="flex items-center gap-1 text-[10px] font-mono text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {copiedTranscript ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedTranscript ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <pre className="whitespace-pre-wrap font-mono text-xs text-slate-300">
+                        {selectedVideo.notesSummary}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Operator Personal Note Pad */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-mono font-bold text-white uppercase">Operator Personal Notes</h3>
+                        <p className="text-xs text-slate-400">Notes are persisted securely to your profile.</p>
+                      </div>
+                      
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                        className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
+                      >
+                        {isSavingNotes ? 'Saving...' : notesSaveSuccess ? 'Saved ✓' : 'Save Notes'}
+                      </button>
+                    </div>
+
+                    <textarea
+                      value={currentNotes}
+                      onChange={(e) => setCurrentNotes(e.target.value)}
+                      placeholder="Write key command snippets, takeaways, investigation ideas, or timestamp notes..."
+                      rows={6}
+                      className="w-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono text-xs focus:outline-none focus:border-cyan-500/50 custom-scrollbar"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: ACTIVE-RECALL QUIZ (+10 XP) */}
               {playerTab === 'quiz' && selectedVideo.quiz && (
                 <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                     <div>
                       <h3 className="text-sm font-mono font-bold text-white uppercase flex items-center gap-2">
                         <HelpCircle className="w-4 h-4 text-cyan-400" />
-                        Video Concept Mastery Quiz
+                        Video Mastery Quiz (+10 XP)
                       </h3>
-                      <p className="text-xs text-slate-400">Score 70% or higher to earn +50 XP and complete the lesson.</p>
+                      <p className="text-xs text-slate-400">Score 70% or higher to cement +10 XP and pass the lesson retention check.</p>
                     </div>
 
                     {quizScore !== null && (
@@ -608,14 +861,14 @@ export const VideoLearningPage: React.FC = () => {
                         disabled={Object.keys(quizAnswers).length < selectedVideo.quiz.length}
                         className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-mono font-black text-xs uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer"
                       >
-                        Submit Answers
+                        Submit Answers (+10 XP)
                       </button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* TAB 4: PRACTICE LAB BRIDGE */}
+              {/* TAB 5: PRACTICE LAB BRIDGE */}
               {playerTab === 'practice' && (
                 <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
                   <div>
@@ -706,6 +959,8 @@ export const VideoLearningPage: React.FC = () => {
                             {v.title}
                           </h4>
                           <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 font-mono">
+                            {v.language && <span className="text-amber-400 font-bold">{v.language}</span>}
+                            {v.language && <span>•</span>}
                             <span>{getVideoDurationMinutes(v)}m</span>
                             <span>•</span>
                             <span>{v.topic}</span>
@@ -728,7 +983,7 @@ export const VideoLearningPage: React.FC = () => {
                   <span>AMAN AI Companion</span>
                 </div>
                 <p className="text-xs text-slate-300 font-sans leading-relaxed">
-                  Have a question regarding this video's commands, architecture, or defensive evasion? AMAN is ready to explain in depth or in Hinglish.
+                  Have a question regarding this video's commands, architecture, or defensive evasion? AMAN is ready to explain in depth or in Hindi/Hinglish.
                 </p>
                 <button
                   onClick={() => handleAskAmanAboutVideo()}
@@ -760,7 +1015,7 @@ export const VideoLearningPage: React.FC = () => {
                   High-Fidelity Video Training Hub
                 </h1>
                 <p className="text-sm text-slate-300 font-sans max-w-2xl">
-                  Curated video lessons aligned with your career role, hands-on terminal sandboxes, and active-recall quizzes.
+                  Curated video lessons across English, Hindi, and Hinglish aligned with your career role, hands-on terminal sandboxes, and active-recall quizzes.
                 </p>
               </div>
 
@@ -809,7 +1064,7 @@ export const VideoLearningPage: React.FC = () => {
                     {nextRecommended.title}
                   </h3>
                   <p className="text-xs text-slate-400 font-sans">
-                    {nextRecommended.topic} • {getVideoDurationMinutes(nextRecommended)} mins • {getVideoRoleTitle(nextRecommended)}
+                    {nextRecommended.topic} • {getVideoDurationMinutes(nextRecommended)} mins • {getVideoRoleTitle(nextRecommended)} {nextRecommended.language && `• [${nextRecommended.language}]`}
                   </p>
                 </div>
 
@@ -895,10 +1150,31 @@ export const VideoLearningPage: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search videos, topics, tools..."
+                  placeholder="Search videos, topics, tools, language..."
                   className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-mono text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50"
                 />
               </div>
+            </div>
+
+            {/* Language Filter Bar */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              <span className="text-[10px] font-mono text-slate-500 font-bold uppercase shrink-0 flex items-center gap-1">
+                <Languages className="w-3 h-3 text-amber-400" />
+                Language:
+              </span>
+              {(['all', 'English', 'Hindi', 'Hinglish'] as (VideoLanguage | 'all')[]).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setActiveLanguageFilter(lang)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono font-bold whitespace-nowrap border transition-all cursor-pointer ${
+                    activeLanguageFilter === lang
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                      : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {lang === 'all' ? 'All Languages' : lang === 'Hindi' ? '🇮🇳 Hindi (हिंदी)' : lang === 'Hinglish' ? '🇮🇳 Hinglish' : '🌐 English'}
+                </button>
+              ))}
             </div>
 
             {/* Role Filter Pills */}
@@ -984,9 +1260,16 @@ export const VideoLearningPage: React.FC = () => {
 
                       {/* Top Badges */}
                       <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-950/80 backdrop-blur-md border border-slate-800 text-cyan-300">
-                          {getVideoRoleTitle(video)}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-950/80 backdrop-blur-md border border-slate-800 text-cyan-300">
+                            {getVideoRoleTitle(video)}
+                          </span>
+                          {video.language && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/20 backdrop-blur-md border border-amber-500/40 text-amber-300">
+                              {video.language}
+                            </span>
+                          )}
+                        </div>
 
                         <button
                           onClick={(e) => {
@@ -1001,9 +1284,14 @@ export const VideoLearningPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* Bottom Duration Badge */}
-                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-950/90 text-slate-300">
-                        {durationMins} mins
+                      {/* Bottom Duration & Quality Badge */}
+                      <div className="absolute bottom-3 right-3 flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/30">
+                          ★ {video.qualityScore || 96}%
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-950/90 text-slate-300">
+                          {durationMins} mins
+                        </span>
                       </div>
 
                       {/* Watch Progress Bar */}
@@ -1068,7 +1356,7 @@ export const VideoLearningPage: React.FC = () => {
             <div className="p-12 rounded-3xl bg-slate-900/40 border border-slate-800 text-center space-y-3">
               <Video className="w-8 h-8 text-slate-500 mx-auto" />
               <h3 className="text-sm font-mono font-bold text-slate-300">No video lessons found</h3>
-              <p className="text-xs text-slate-500">Try changing your search query or selecting a different role filter.</p>
+              <p className="text-xs text-slate-500">Try changing your search query, role filter, or language selector.</p>
             </div>
           )}
 

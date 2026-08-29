@@ -1345,6 +1345,7 @@ Your goal is to conduct an end-to-end security assessment: discover open ports, 
 };
 
 export const ACHIEVEMENTS_DATA: Achievement[] = [
+  { id: 'ach-first-step', code: 'ACH_FIRST_STEP', title: 'First Step', description: 'Complete your first hands-on terminal mission during onboarding.', category: 'Milestone', xp: 100, xpReward: 100, icon: 'Flag', unlocked: false },
   { id: 'ach-1', code: 'ACH_FIRST_LOGIN', title: 'Welcome Operator', description: 'Initialize your workstation identity and complete setup.', category: 'Milestone', xp: 50, xpReward: 50, icon: 'Terminal', unlocked: true, unlockedAt: '2026-08-20' },
   { id: 'ach-first-linux-cmd', code: 'ACH_FIRST_LINUX_COMMAND', title: 'First Linux Command', description: 'Execute your first interactive Linux command in the terminal or mission.', category: 'Linux', xp: 100, xpReward: 100, icon: 'Terminal', unlocked: false },
   { id: 'ach-networking-beginner', code: 'ACH_NETWORKING_BEGINNER', title: 'Networking Beginner', description: 'Explore OSI layers, IP addressing, and network devices.', category: 'Networking', xp: 150, xpReward: 150, icon: 'Network', unlocked: false },

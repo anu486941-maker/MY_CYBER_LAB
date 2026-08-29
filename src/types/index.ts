@@ -47,6 +47,11 @@ export interface UserProfile {
   labHours: number;
   experience: ExperienceLevel;
   experienceLevel?: ExperienceLevel | string;
+  learningGoals?: string[];
+  assessmentCompleted?: boolean;
+  assessmentScores?: Record<string, number>;
+  recommendedPath?: string[];
+  emailVerified?: boolean;
   language: LanguagePreference;
   dailyTime: DailyTimeGoal;
   learningStyle: LearningStyle;
@@ -645,6 +650,24 @@ export interface EthicalHackerReadiness {
 // VIDEO LEARNING SYSTEM TYPES
 // ==========================================
 
+export type VideoLanguage = 'English' | 'Hindi' | 'Hinglish';
+
+export interface VideoChapter {
+  title: string;
+  timestamp: string;
+  seconds: number;
+}
+
+export interface VideoQualityScore {
+  total: number; // /100
+  roleRelevance: number; // /25
+  technicalAccuracy: number; // /25
+  teachingClarity: number; // /20
+  languageQuality: number; // /10
+  practicalUsefulness: number; // /10
+  recency: number; // /10
+}
+
 export interface VideoQuizQuestion {
   id: string;
   question: string;
@@ -661,8 +684,12 @@ export interface VideoItem {
   videoUrl: string;
   embedUrl: string;
   thumbnail: string;
+  language?: VideoLanguage;
   role: CareerRoleId | string;
+  roles?: (CareerRoleId | string)[];
   topic: string;
+  topics?: string[];
+  skills?: string[];
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
   duration: string;
   durationSeconds: number;
@@ -670,6 +697,15 @@ export interface VideoItem {
   tags: string[];
   learningObjectives: string[];
   notesSummary: string;
+  keyTakeaways?: string[];
+  chapters?: VideoChapter[];
+  transcript?: string;
+  transcriptAvailable?: boolean;
+  qualityScore?: number;
+  qualityBreakdown?: VideoQualityScore;
+  qualityStatus?: 'VERIFIED' | 'REVIEW REQUIRED' | 'OUTDATED';
+  whyRecommended?: string;
+  xpReward?: number;
   instructor?: string;
   channelName?: string;
   order: number;
@@ -687,6 +723,9 @@ export interface VideoItem {
     route: string;
     description: string;
   };
+  relatedModules?: string[];
+  relatedTools?: string[];
+  lastVerified?: string;
 }
 
 export interface VideoUserProgress {
@@ -694,11 +733,17 @@ export interface VideoUserProgress {
   completed: boolean;
   watchProgress: number; // 0 to 100 percentage
   currentTimeSeconds?: number;
+  lastPosition?: number;
   lastWatchedAt: string; // ISO date string
   quizScore?: number; // 0 to 100 percentage
   quizCompleted?: boolean;
   bookmarked?: boolean;
   notes?: string;
+  language?: VideoLanguage | 'Auto';
+  startedAt?: string;
+  completedAt?: string;
+  relatedLabCompleted?: boolean;
+  awardedMilestones?: ('25' | '50' | '90' | '100' | 'quiz')[];
   updatedAt?: string;
 }
 

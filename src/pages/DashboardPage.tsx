@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { getCareerRoleById } from '../data/careerRolesData';
 import { getRolePersonalization } from '../services/rolePersonalization';
 import { getNextRecommendedVideo } from '../services/videoRecommendationEngine';
+import { AdaptiveLearningService } from '../services/adaptiveLearningService';
 import { 
   Flame, 
   Crosshair, 
@@ -24,7 +25,12 @@ import {
   SlidersHorizontal,
   Award,
   Video,
-  Play
+  Play,
+  Brain,
+  ShieldAlert,
+  AlertTriangle,
+  RotateCcw,
+  Zap
 } from 'lucide-react';
 import { ModeToggleBanner } from '../components/common/ModeToggleBanner';
 import { GlobalProgressBar } from '../components/common/GlobalProgressBar';
@@ -39,7 +45,11 @@ export const DashboardPage: React.FC = () => {
     careerProgress,
     selectedMission,
     videoProgressMap,
-    weakSkills
+    weakSkills,
+    skillMasteries,
+    mistakes,
+    completedMissions,
+    labScores
   } = useApp();
   const navigate = useNavigate();
 
@@ -47,6 +57,22 @@ export const DashboardPage: React.FC = () => {
   const roleConfig = getRolePersonalization(chosenRoleKey);
   const currentRole = getCareerRoleById(chosenRoleKey);
   const { position, nextMove } = learningState;
+
+  // Compute adaptive Next Best Action based on skill mastery telemetry and mistake journal
+  const adaptiveAction = useMemo(() => {
+    return AdaptiveLearningService.getNextBestAction({
+      profile,
+      skillMasteries,
+      mistakes,
+      completedMissions,
+      labScores
+    });
+  }, [profile, skillMasteries, mistakes, completedMissions, labScores]);
+
+  // Compute Skill Health telemetry summary
+  const skillHealth = useMemo(() => {
+    return AdaptiveLearningService.getSkillHealthSummary(skillMasteries, mistakes);
+  }, [skillMasteries, mistakes]);
 
   // Compute role-tailored recommended next action
   const roleNextAction = roleConfig.getNextAction(profile);
@@ -257,6 +283,16 @@ export const DashboardPage: React.FC = () => {
               <span>CONTINUE MISSION</span>
             </button>
 
+            {/* 5. JOB SIMULATION */}
+            <button
+              id="dashboard-job-sim-btn"
+              onClick={() => navigate('/career-simulation')}
+              className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-950 to-slate-900 hover:from-emerald-900 hover:to-slate-800 border border-emerald-500/40 text-emerald-300 hover:text-white font-mono font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Briefcase className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>JOB SIMULATION</span>
+            </button>
+
           </div>
         </div>
 
@@ -412,6 +448,147 @@ export const DashboardPage: React.FC = () => {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* SKILL HEALTH & ADAPTIVE INTELLIGENCE RADAR */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        {/* COL 1 & 2: ADAPTIVE NEXT BEST ACTION (TELEMETRY-DRIVEN) */}
+        <div className="lg:col-span-2 p-6 rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 border border-cyan-500/40 space-y-4 shadow-xl">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+              <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
+                AMAN ADAPTIVE INTELLIGENCE • NEXT BEST MOVE
+              </span>
+            </div>
+            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
+              adaptiveAction.urgency === 'HIGH' 
+                ? 'bg-rose-950 text-rose-400 border border-rose-500/30' 
+                : 'bg-cyan-950 text-cyan-300 border border-cyan-500/30'
+            }`}>
+              {adaptiveAction.urgency} PRIORITY
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <h3 className="text-base sm:text-lg font-mono font-bold text-white flex items-center gap-2">
+                <span>{adaptiveAction.title}</span>
+                <span className="text-xs text-slate-400 font-normal">({adaptiveAction.difficulty})</span>
+              </h3>
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-400 shrink-0">
+                <span className="text-cyan-400 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {adaptiveAction.timeEstimate}
+                </span>
+                <span>•</span>
+                <span className="text-amber-400 flex items-center gap-1">
+                  <Award className="w-3.5 h-3.5" />
+                  +{adaptiveAction.xpReward} XP
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+              <strong className="text-cyan-400 font-mono">WHY AMAN RECOMMENDS THIS: </strong>
+              {adaptiveAction.whyThis}
+            </p>
+
+            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5 font-mono text-xs">
+              <span className="text-[10px] text-slate-500 font-bold uppercase block">WHAT YOU WILL GAIN:</span>
+              <ul className="space-y-1 text-slate-300 text-[11px] font-sans">
+                {adaptiveAction.whatYouWillLearn.map((item, idx) => (
+                  <li key={idx} className="flex items-start gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between">
+              <span className="text-[11px] font-mono text-slate-400">
+                Category: <strong className="text-slate-200">{adaptiveAction.category}</strong>
+              </span>
+
+              <button
+                onClick={() => navigate(adaptiveAction.route)}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 text-slate-950 font-mono font-black text-xs uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-lg hover:scale-105 cursor-pointer"
+              >
+                <span>Launch Recommended {adaptiveAction.activityType}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* COL 3: SKILL HEALTH & RETENTION RADAR */}
+        <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800 space-y-4 flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  SKILL HEALTH & RETENTION
+                </span>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-400">
+                {skillHealth.overallHealthScore}% Mastery
+              </span>
+            </div>
+
+            {/* Top Strengths */}
+            <div className="space-y-1.5 font-mono text-xs">
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">TOP STRENGTHS</span>
+              {skillHealth.topStrengths.length > 0 ? (
+                skillHealth.topStrengths.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
+                    <span className="text-slate-300 truncate">{s.name}</span>
+                    <span className="text-emerald-400 font-bold">{s.mastery}%</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[11px] text-slate-400 font-sans">Complete labs to calibrate strengths.</p>
+              )}
+            </div>
+
+            {/* Weakest Skills / Gaps */}
+            <div className="space-y-1.5 font-mono text-xs pt-1">
+              <span className="text-[10px] text-amber-500 uppercase font-bold block flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                <span>GROWTH PRIORITIES</span>
+              </span>
+              {skillHealth.weakestSkills.length > 0 ? (
+                skillHealth.weakestSkills.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-amber-500/20 text-[11px]">
+                    <span className="text-slate-300 truncate">{s.name}</span>
+                    <span className="text-amber-400 font-bold">{s.mastery}%</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-[11px] text-slate-400 font-sans">No critical skill gaps identified.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800 space-y-2 font-mono text-xs">
+            <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <span>Mistake Journal:</span>
+              <span className={skillHealth.pendingReviewCount > 0 ? 'text-amber-400 font-bold' : 'text-emerald-400'}>
+                {skillHealth.pendingReviewCount} Pending Weaknesses
+              </span>
+            </div>
+            <Link
+              to="/mistakes"
+              className="w-full py-2 px-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-purple-300 text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-center"
+            >
+              <span>Open Mistake Journal</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+
       </div>
 
       {/* CAREER TRACK ORCHESTRATOR */}

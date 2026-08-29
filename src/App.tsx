@@ -66,9 +66,12 @@ const RoleSelectionPage = lazy(() => import('./pages/RoleSelectionPage').then(m 
 const InvestigationCenterPage = lazy(() => import('./pages/InvestigationCenterPage').then(m => ({ default: m.InvestigationCenterPage })));
 const SkillLibraryPage = lazy(() => import('./pages/SkillLibraryPage').then(m => ({ default: m.SkillLibraryPage })));
 const VideoLearningPage = lazy(() => import('./pages/VideoLearningPage').then(m => ({ default: m.VideoLearningPage })));
+const CareerSimulationPage = lazy(() => import('./pages/CareerSimulationPage').then(m => ({ default: m.CareerSimulationPage })));
 const AttackBoxPage = lazy(() => import('./pages/AttackBoxPage').then(m => ({ default: m.AttackBoxPage })));
 const RealCaseStudyPage = lazy(() => import('./pages/RealCaseStudyPage').then(m => ({ default: m.RealCaseStudyPage })));
 const TeamsPage = lazy(() => import('./pages/TeamsPage').then(m => ({ default: m.TeamsPage })));
+const AcquisitionReadinessPage = lazy(() => import('./pages/AcquisitionReadinessPage').then(m => ({ default: m.AcquisitionReadinessPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const DebugPage = lazy(() => import('./pages/DebugPage').then(m => ({ default: m.DebugPage })));
 
 const RoleGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -166,8 +169,10 @@ const AppContent: React.FC = () => {
                           <Route path="/learn/module/:moduleId" element={<CyberLabModuleRunnerPage />} />
                           <Route path="/learning-path" element={<LearningPathPage />} />
                           <Route path="/video-learning" element={<VideoLearningPage />} />
-                          <Route path="/videos" element={<Navigate to="/video-learning" replace />} />
-                          <Route path="/learn/videos" element={<Navigate to="/video-learning" replace />} />
+                          <Route path="/academy" element={<VideoLearningPage />} />
+                          <Route path="/academy/:videoId" element={<VideoLearningPage />} />
+                          <Route path="/videos" element={<Navigate to="/academy" replace />} />
+                          <Route path="/learn/videos" element={<Navigate to="/academy" replace />} />
                           <Route path="/practice" element={<PracticeHubPage />} />
                           <Route path="/rooms" element={<TryHackMeRoomsPage />} />
                           <Route path="/tryhackme" element={<TryHackMeRoomsPage />} />
@@ -215,6 +220,9 @@ const AppContent: React.FC = () => {
                           <Route path="/verify-certificate/:certId" element={<VerifyCertificatePage />} />
                           <Route path="/visualizer" element={<NetworkVisualizerPage />} />
                           <Route path="/portfolio" element={<CareerPortfolioPage />} />
+                          <Route path="/career-simulation" element={<CareerSimulationPage />} />
+                          <Route path="/job-readiness" element={<CareerSimulationPage />} />
+                          <Route path="/simulation" element={<CareerSimulationPage />} />
                           <Route path="/security-report" element={<SecurityReportPage />} />
                           <Route path="/ace" element={<AuthorizedClientEngagementPage />} />
                           <Route path="/ace-simulator" element={<AuthorizedClientEngagementPage />} />
@@ -229,6 +237,10 @@ const AppContent: React.FC = () => {
                           <Route path="/analytics" element={<LearningAnalyticsPage />} />
                           <Route path="/learning-health" element={<LearningAnalyticsPage />} />
                           <Route path="/exam-mode" element={<ExamModePage />} />
+                          <Route path="/acquisition" element={<AcquisitionReadinessPage />} />
+                          <Route path="/buyer-readiness" element={<AcquisitionReadinessPage />} />
+                          <Route path="/admin" element={<AdminPage />} />
+                          <Route path="/owner" element={<AdminPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/debug" element={import.meta.env.DEV ? <DebugPage /> : <Navigate to="/dashboard" replace />} />
                           <Route path="*" element={<Navigate to="/dashboard" replace />} />

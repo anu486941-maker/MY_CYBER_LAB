@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useApp } from '../context/AppContext';
 import { 
   ShieldAlert, 
   Search, 
@@ -28,12 +29,17 @@ import {
   Layers,
   HelpCircle,
   CheckCircle2,
-  Filter
+  Filter,
+  Zap,
+  Check,
+  X
 } from 'lucide-react';
 import { PRACTICE_LABS_HUB_DATA, PracticeLab } from '../data/practiceLabsData';
 import { PracticeLabRunnerModal } from '../components/labs/PracticeLabRunnerModal';
+import { MICRO_CHALLENGES_DATA, MicroChallenge } from '../services/microChallengeService';
 
 export const PracticeHubPage: React.FC = () => {
+  const { addXp } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [activeLabModal, setActiveLabModal] = useState<PracticeLab | null>(null);
   const [customPrompt, setCustomPrompt] = useState<string>('');
@@ -41,6 +47,29 @@ export const PracticeHubPage: React.FC = () => {
     const saved = localStorage.getItem('mycyberlab_custom_labs');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Micro challenge state
+  const [activeChallengeIndex, setActiveChallengeIndex] = useState<number>(0);
+  const [selectedDrillOption, setSelectedDrillOption] = useState<number | null>(null);
+  const [isDrillSubmitted, setIsDrillSubmitted] = useState<boolean>(false);
+  const [completedDrills, setCompletedDrills] = useState<string[]>([]);
+
+  const activeDrill = MICRO_CHALLENGES_DATA[activeChallengeIndex] || MICRO_CHALLENGES_DATA[0];
+
+  const handleDrillSubmit = () => {
+    if (selectedDrillOption === null) return;
+    setIsDrillSubmitted(true);
+    if (selectedDrillOption === activeDrill.correctIndex && !completedDrills.includes(activeDrill.id)) {
+      addXp(activeDrill.xpReward, `Completed Micro-Challenge: ${activeDrill.title}`);
+      setCompletedDrills(prev => [...prev, activeDrill.id]);
+    }
+  };
+
+  const handleNextDrill = () => {
+    setSelectedDrillOption(null);
+    setIsDrillSubmitted(false);
+    setActiveChallengeIndex((prev) => (prev + 1) % MICRO_CHALLENGES_DATA.length);
+  };
 
   const handleGenerateCustomLab = (promptText: string) => {
     const topic = promptText.trim() || 'Custom Sandbox Scenario';
@@ -261,6 +290,119 @@ export const PracticeHubPage: React.FC = () => {
               + {tag}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* =========================================================================
+          MICRO-CHALLENGE & RAPID RETENTION DRILL (2-5 MIN RECALL)
+          ========================================================================= */}
+      <div className="p-6 rounded-3xl bg-slate-900/90 border border-cyan-500/30 shadow-xl space-y-4 font-mono text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="p-1.5 rounded-lg bg-cyan-950 border border-cyan-500/40 text-cyan-400">
+              <Zap className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white uppercase">RAPID RETENTION MICRO-DRILL (2-5 MIN)</h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-500/30">
+                  {activeDrill.category}
+                </span>
+                {activeDrill.mitreRef && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-500/30">
+                    MITRE {activeDrill.mitreRef}
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-400 text-[11px]">Reinforce critical security instincts with spaced micro-challenges.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-amber-400 font-bold">+{activeDrill.xpReward} XP</span>
+            <span className="text-slate-500">•</span>
+            <span className="text-slate-400">Drill {activeChallengeIndex + 1} of {MICRO_CHALLENGES_DATA.length}</span>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="text-sm font-bold text-slate-100 font-sans leading-relaxed">
+            {activeDrill.prompt}
+          </h4>
+
+          {activeDrill.codeSnippet && (
+            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-mono whitespace-pre-wrap">
+              {activeDrill.codeSnippet}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {activeDrill.options.map((option, idx) => {
+              const isSelected = selectedDrillOption === idx;
+              const isCorrect = idx === activeDrill.correctIndex;
+              let btnClass = 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300';
+
+              if (isDrillSubmitted) {
+                if (isCorrect) {
+                  btnClass = 'bg-emerald-950/80 border-emerald-500 text-emerald-200';
+                } else if (isSelected) {
+                  btnClass = 'bg-rose-950/80 border-rose-500 text-rose-200';
+                }
+              } else if (isSelected) {
+                btnClass = 'bg-cyan-950/80 border-cyan-500 text-cyan-200';
+              }
+
+              return (
+                <button
+                  key={idx}
+                  disabled={isDrillSubmitted}
+                  onClick={() => setSelectedDrillOption(idx)}
+                  className={`p-3 rounded-xl border text-left font-sans text-xs transition-all flex items-start gap-2.5 cursor-pointer disabled:cursor-default ${btnClass}`}
+                >
+                  <span className="font-mono font-bold text-slate-500 shrink-0">[{String.fromCharCode(65 + idx)}]</span>
+                  <span className="leading-snug">{option}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {isDrillSubmitted && (
+            <div className={`p-4 rounded-xl border space-y-1 ${
+              selectedDrillOption === activeDrill.correctIndex
+                ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+            }`}>
+              <div className="font-bold flex items-center gap-1.5">
+                {selectedDrillOption === activeDrill.correctIndex ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                <span>{selectedDrillOption === activeDrill.correctIndex ? 'Correct Instinct!' : 'Conceptual Explanation:'}</span>
+              </div>
+              <p className="text-slate-300 font-sans text-[11px] leading-relaxed">{activeDrill.explanation}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2">
+            {!isDrillSubmitted ? (
+              <button
+                disabled={selectedDrillOption === null}
+                onClick={handleDrillSubmit}
+                className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold transition-all cursor-pointer font-mono"
+              >
+                Submit Answer
+              </button>
+            ) : (
+              <button
+                onClick={handleNextDrill}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer font-mono flex items-center gap-1.5"
+              >
+                <span>Next Recall Drill</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <span className="text-[11px] text-slate-500">
+              {completedDrills.length}/{MICRO_CHALLENGES_DATA.length} Drills Cleared
+            </span>
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { User, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'firebase/auth';
+import { 
+  User, 
+  signInWithPopup, 
+  signOut as fbSignOut, 
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendEmailVerification,
+  updateProfile as fbUpdateProfile
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../lib/firebase';
 import { UnifiedLearningEngine, UnifiedLearningState } from '../utils/unifiedLearningEngine';
@@ -110,6 +119,10 @@ interface AppContextType {
   user: User | null;
   isAuthLoading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<{ success: boolean; error?: string }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  sendEmailVerificationLink: () => Promise<{ success: boolean; error?: string }>;
+  reloadAuthUser: () => Promise<void>;
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
 
@@ -1183,6 +1196,109 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Email & Password Sign-Up
+  const signUpWithEmail = async (email: string, password: string, displayName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setIsAuthLoading(true);
+      setSyncErrorMessage(null);
+      setSyncStatus('SYNCING');
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      if (userCredential.user) {
+        if (displayName) {
+          try {
+            await fbUpdateProfile(userCredential.user, { displayName: displayName.trim() });
+          } catch (pErr) {
+            console.warn('Could not update displayName on auth user:', pErr);
+          }
+          setProfile(prev => ({
+            ...prev,
+            name: displayName.trim(),
+            codename: displayName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 14) || prev.codename
+          }));
+        }
+        try {
+          await sendEmailVerification(userCredential.user);
+        } catch (vErr) {
+          console.warn('Verification email send notice:', vErr);
+        }
+        setIsAuthLoading(false);
+        return { success: true };
+      }
+      setIsAuthLoading(false);
+      return { success: false, error: 'User creation returned empty user profile' };
+    } catch (error: any) {
+      console.error('Email sign up failed:', error);
+      let msg = error.message || 'Failed to create account.';
+      if (error.code === 'auth/email-already-in-use') {
+        msg = 'An account with this email address already exists. Please sign in instead.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        msg = 'Password is too weak. Please use at least 8 characters with letters and numbers.';
+      } else if (error.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password sign-in is not enabled in Firebase Console. You can still use Google Sign-In or Guest Access!';
+      }
+      setSyncErrorMessage(msg);
+      setSyncStatus('SYNC ERROR');
+      setIsAuthLoading(false);
+      return { success: false, error: msg };
+    }
+  };
+
+  // Email & Password Sign-In
+  const signInWithEmail = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      setIsAuthLoading(true);
+      setSyncErrorMessage(null);
+      setSyncStatus('SYNCING');
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      if (userCredential.user) {
+        setIsAuthLoading(false);
+        return { success: true };
+      }
+      setIsAuthLoading(false);
+      return { success: false, error: 'Sign in returned empty user' };
+    } catch (error: any) {
+      console.error('Email sign in failed:', error);
+      let msg = error.message || 'Failed to sign in.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        msg = 'Incorrect email or password. Please verify your credentials or create a new account.';
+      } else if (error.code === 'auth/invalid-email') {
+        msg = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'Access temporarily disabled due to many failed attempts. Reset your password or try again later.';
+      }
+      setSyncErrorMessage(msg);
+      setSyncStatus('SYNC ERROR');
+      setIsAuthLoading(false);
+      return { success: false, error: msg };
+    }
+  };
+
+  // Send Email Verification link
+  const sendEmailVerificationLink = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (!auth.currentUser) return { success: false, error: 'No authenticated user session.' };
+      await sendEmailVerification(auth.currentUser);
+      return { success: true };
+    } catch (error: any) {
+      console.error('Failed to send email verification:', error);
+      return { success: false, error: error.message || 'Could not send verification email.' };
+    }
+  };
+
+  // Reload Auth User (to check if verified)
+  const reloadAuthUser = async (): Promise<void> => {
+    try {
+      if (auth.currentUser) {
+        await auth.currentUser.reload();
+        setCurrentUser({ ...auth.currentUser });
+      }
+    } catch (err) {
+      console.warn('Error reloading auth user:', err);
+    }
+  };
+
   // Secure Anonymous Guest Sign-In for friction-free beta access
   const signInAsGuest = async () => {
     try {
@@ -1561,17 +1677,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Video Learning Progress Methods (Firestore subcollection: users/{uid}/videoProgress/{videoId})
   const updateVideoProgress = async (videoId: string, updates: Partial<VideoUserProgress>) => {
     const now = new Date().toISOString();
+    let awardedXp = 0;
+
     setVideoProgressMap(prev => {
       const existing = prev[videoId] || {
         videoId,
         completed: false,
         watchProgress: 0,
-        lastWatchedAt: now
+        lastWatchedAt: now,
+        awardedMilestones: []
       };
+
+      const existingMilestones = existing.awardedMilestones || [];
+      const newMilestones = [...existingMilestones];
+
+      const targetProgress = updates.watchProgress !== undefined ? updates.watchProgress : existing.watchProgress;
+      const isCompleted = updates.completed !== undefined ? updates.completed : existing.completed;
+
+      // Idempotent progression XP milestones
+      if (targetProgress >= 25 && !newMilestones.includes('25')) {
+        newMilestones.push('25');
+        awardedXp += 2;
+      }
+      if (targetProgress >= 50 && !newMilestones.includes('50')) {
+        newMilestones.push('50');
+        awardedXp += 3;
+      }
+      if (targetProgress >= 90 && !newMilestones.includes('90')) {
+        newMilestones.push('90');
+        awardedXp += 5;
+      }
+      if ((targetProgress >= 100 || isCompleted) && !newMilestones.includes('100')) {
+        newMilestones.push('100');
+        awardedXp += 10;
+      }
+
       const updated: VideoUserProgress = {
         ...existing,
         ...updates,
         videoId,
+        awardedMilestones: newMilestones,
         lastWatchedAt: now,
         updatedAt: now
       };
@@ -1579,6 +1724,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try { localStorage.setItem('mcl_video_progress', JSON.stringify(next)); } catch {}
       return next;
     });
+
+    if (awardedXp > 0) {
+      addXp(awardedXp, `Video Lesson Progress Milestone`);
+    }
 
     if (currentUser) {
       try {
@@ -1600,16 +1749,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       completed, 
       watchProgress: completed ? 100 : 0 
     });
-    if (completed) {
-      addXp(50, `Completed video lesson`);
-    }
   };
 
   const recordVideoQuizScore = async (videoId: string, score: number) => {
     const passed = score >= 70;
+    const existing = videoProgressMap[videoId];
+    const existingMilestones = existing?.awardedMilestones || [];
+    const newMilestones = [...existingMilestones];
+
+    if (passed && !newMilestones.includes('quiz')) {
+      newMilestones.push('quiz');
+      addXp(10, `Passed Video Mastery Quiz (${score}%)`);
+    }
+
     await updateVideoProgress(videoId, {
       quizScore: score,
       quizCompleted: true,
+      awardedMilestones: newMilestones,
       ...(passed ? { completed: true, watchProgress: 100 } : {})
     });
 
@@ -1634,10 +1790,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return prev;
         });
       }
-    }
-
-    if (passed) {
-      addXp(50, `Passed Video Mastery Quiz (${score}%)`);
     }
   };
 
@@ -2118,6 +2270,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         user: currentUser,
         isAuthLoading,
         signInWithGoogle,
+        signUpWithEmail,
+        signInWithEmail,
+        sendEmailVerificationLink,
+        reloadAuthUser,
         signInAsGuest,
         signOut,
         syncStatus,

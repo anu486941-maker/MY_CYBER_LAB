@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { getCareerRoleById } from '../data/careerRolesData';
+import { CareerReadinessService } from '../services/careerReadinessService';
 import { 
   Briefcase, 
   Award, 
@@ -17,12 +18,26 @@ import {
   Flame,
   Globe,
   Lock,
-  Zap
+  Zap,
+  TrendingUp,
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const CareerPortfolioPage: React.FC = () => {
-  const { profile, missions, certificatesList, certificateInfo, completedMissions, engagementReports, securityFindings } = useApp();
+  const { 
+    profile, 
+    missions, 
+    certificatesList, 
+    certificateInfo, 
+    completedMissions, 
+    engagementReports, 
+    securityFindings,
+    skillMasteries,
+    mistakes,
+    evidenceLocker
+  } = useApp();
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
 
   const currentRole = getCareerRoleById(profile.targetRole || profile.careerPath || 'soc-analyst');
@@ -31,6 +46,16 @@ export const CareerPortfolioPage: React.FC = () => {
   const completedMissionsList = missions.filter(
     (m) => m.status === 'completed' || completedMissions?.includes(m.id)
   );
+
+  // Compute 9-Pillar Career Readiness
+  const readiness = CareerReadinessService.calculateReadiness({
+    profile,
+    skillMasteries: skillMasteries || [],
+    mistakes: mistakes || [],
+    completedMissionsCount: completedMissionsList.length,
+    evidenceCount: evidenceLocker?.length || 0,
+    reportsCount: (engagementReports?.length || 0) + (securityFindings?.length || 0)
+  });
 
   const handlePrint = () => {
     window.print();
@@ -47,6 +72,9 @@ export const CareerPortfolioPage: React.FC = () => {
         totalXp: profile.xp,
         currentCyberLevel: profile.cyberLevel
       },
+      readinessScore: readiness.overallScore,
+      readinessTier: readiness.careerReadinessTier,
+      readinessPillars: readiness.pillars,
       verifiedCertificates: certificatesList,
       completedMissionsCount: completedMissionsList.length,
       completedMissions: completedMissionsList.map((m) => ({
@@ -103,6 +131,14 @@ export const CareerPortfolioPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/career-simulation"
+            className="px-3.5 py-2 rounded-xl bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>LAUNCH SIMULATION</span>
+          </Link>
+
           <button
             onClick={handleShare}
             className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
@@ -152,22 +188,88 @@ export const CareerPortfolioPage: React.FC = () => {
           </div>
 
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 gap-3 text-xs font-mono">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-mono">
             <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 print:bg-slate-100 text-center">
-              <div className="text-lg font-bold text-cyan-400 print:text-black">{profile.xp}</div>
-              <div className="text-[10px] text-slate-500 uppercase">EARNED XP</div>
+              <div className="text-lg font-bold text-cyan-400 print:text-black">{readiness.overallScore}%</div>
+              <div className="text-[10px] text-slate-500 uppercase">JOB READINESS</div>
             </div>
             <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 print:bg-slate-100 text-center">
-              <div className="text-lg font-bold text-emerald-400 print:text-black">{completedMissionsList.length}</div>
-              <div className="text-[10px] text-slate-500 uppercase">CLEARED MISSIONS</div>
+              <div className="text-lg font-bold text-emerald-400 print:text-black">{profile.xp}</div>
+              <div className="text-[10px] text-slate-500 uppercase">EARNED XP</div>
+            </div>
+            <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 print:bg-slate-100 text-center col-span-2 sm:col-span-1">
+              <div className="text-lg font-bold text-purple-400 print:text-black">{completedMissionsList.length}</div>
+              <div className="text-[10px] text-slate-500 uppercase">MISSIONS</div>
             </div>
           </div>
         </div>
 
-        {/* 1. VERIFIED CERTIFICATES */}
+        {/* 1. CAREER READINESS SCORECARD (9 PILLARS) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase flex items-center gap-2 print:text-black">
+              <TrendingUp className="w-4 h-4 text-cyan-400 print:text-black" /> 1. CAREER READINESS INDEX & PILLARS
+            </h3>
+            <span className="px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold">
+              {readiness.careerReadinessTier.replace('_', ' ')}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+            {Object.entries(readiness.pillars).map(([key, pillar]) => (
+              <div key={key} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 print:bg-slate-50 print:border-slate-300 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300 font-bold print:text-black">{pillar.name}</span>
+                  <span className={`font-bold ${
+                    pillar.score >= 80 ? 'text-emerald-400' :
+                    pillar.score >= 65 ? 'text-cyan-400' :
+                    pillar.score >= 45 ? 'text-amber-400' : 'text-rose-400'
+                  }`}>
+                    {pillar.score}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${
+                      pillar.score >= 80 ? 'bg-emerald-400' :
+                      pillar.score >= 65 ? 'bg-cyan-400' :
+                      pillar.score >= 45 ? 'bg-amber-400' : 'bg-rose-400'
+                    }`}
+                    style={{ width: `${pillar.score}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 font-sans leading-tight line-clamp-2">
+                  {pillar.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Biggest Gap Callout */}
+          {readiness.biggestGap && (
+            <div className="p-4 rounded-2xl bg-amber-950/30 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-amber-300 font-bold">Target Growth Priority: {readiness.biggestGap.name} ({readiness.biggestGap.score}%)</span>
+                  <p className="text-slate-300 text-[11px] font-sans">{readiness.biggestGap.remediation}</p>
+                </div>
+              </div>
+              <Link
+                to={readiness.biggestGap.targetRoute}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shrink-0 flex items-center gap-1 transition-all"
+              >
+                <span>Launch Drill</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* 2. VERIFIED CERTIFICATES */}
         <div className="space-y-4">
           <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase flex items-center gap-2 print:text-black">
-            <Award className="w-4 h-4 text-cyan-400 print:text-black" /> 1. VERIFIABLE ACADEMY CREDENTIALS
+            <Award className="w-4 h-4 text-cyan-400 print:text-black" /> 2. VERIFIABLE ACADEMY CREDENTIALS
           </h3>
 
           {verifiedCert ? (
@@ -202,10 +304,10 @@ export const CareerPortfolioPage: React.FC = () => {
           )}
         </div>
 
-        {/* 2. DEMONSTRATED TECHNICAL SKILLS MATRIX */}
+        {/* 3. DEMONSTRATED TECHNICAL SKILLS MATRIX */}
         <div className="space-y-4">
           <h3 className="text-sm font-mono font-bold text-emerald-400 uppercase flex items-center gap-2 print:text-black">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 print:text-black" /> 2. DEMONSTRATED COMPETENCIES & TOOLCHAINS
+            <ShieldCheck className="w-4 h-4 text-emerald-400 print:text-black" /> 3. DEMONSTRATED COMPETENCIES & TOOLCHAINS
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
@@ -230,10 +332,10 @@ export const CareerPortfolioPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 3. VERIFIED LABS & MISSIONS EVIDENCE */}
+        {/* 4. VERIFIED LABS & MISSIONS EVIDENCE */}
         <div className="space-y-4">
           <h3 className="text-sm font-mono font-bold text-purple-400 uppercase flex items-center gap-2 print:text-black">
-            <Terminal className="w-4 h-4 text-purple-400 print:text-black" /> 3. COMPLETED LABS & TACTICAL MISSIONS
+            <Terminal className="w-4 h-4 text-purple-400 print:text-black" /> 4. COMPLETED LABS & TACTICAL MISSIONS
           </h3>
 
           {completedMissionsList.length > 0 ? (
@@ -250,7 +352,6 @@ export const CareerPortfolioPage: React.FC = () => {
                       <span className="text-slate-500 ml-2">({m.category})</span>
                     </div>
                   </div>
-
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-slate-950 text-cyan-300 print:text-black text-[10px]">
                       {m.difficulty}
@@ -267,10 +368,10 @@ export const CareerPortfolioPage: React.FC = () => {
           )}
         </div>
 
-        {/* 4. CAREER CAPSTONE PROJECT DELIVERABLE */}
+        {/* 5. CAREER CAPSTONE PROJECT DELIVERABLE */}
         <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-950/40 to-slate-900 border border-cyan-500/30 space-y-3">
           <div className="text-xs font-mono text-cyan-400 font-bold uppercase flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4" /> 4. ACCREDITED CAREER CAPSTONE
+            <Sparkles className="w-4 h-4" /> 5. ACCREDITED CAREER CAPSTONE
           </div>
           <h4 className="text-base font-mono font-bold text-white">
             Enterprise Incident Response & Perimeter Hardening Capstone
@@ -280,11 +381,11 @@ export const CareerPortfolioPage: React.FC = () => {
           </p>
         </div>
 
-        {/* 5. AUTHORIZED CLIENT ENGAGEMENT (ACE) DELIVERABLES */}
+        {/* 6. AUTHORIZED CLIENT ENGAGEMENT (ACE) DELIVERABLES */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-mono font-bold text-cyan-400 uppercase flex items-center gap-2 print:text-black">
-              <ShieldCheck className="w-4 h-4 text-cyan-400 print:text-black" /> 5. AUTHORIZED CLIENT ENGAGEMENT DELIVERABLES
+              <ShieldCheck className="w-4 h-4 text-cyan-400 print:text-black" /> 6. AUTHORIZED CLIENT ENGAGEMENT DELIVERABLES
             </h3>
             <Link to="/ace" className="text-xs font-mono text-cyan-400 hover:underline print:hidden flex items-center gap-1">
               ACE Console <ExternalLink className="w-3 h-3" />
