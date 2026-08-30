@@ -185,7 +185,157 @@ Your progress is safely recorded.`;
       summary = `Explaining current room: ${course}.`;
     }
   }
-  // 7. GENERAL QUERY / FALLBACK
+  // 7. SPECIFIC CYBERSECURITY TOPICS & DEEP CONCEPT ANSWERS
+  else if (/nmap|port scan|recon|port/i.test(userQuery)) {
+    if (isHinglish) {
+      fullText = `### 🔍 Port Scanning & Network Reconnaissance
+
+**1. Concept in Simple Terms:**
+Port scanning ek process hai jisme target host ke open ports aur running network services ko identify kiya jata hai.
+
+**2. Under the Hood Mechanics:**
+- **TCP SYN Scan (\`-sS\`)**: "Stealth scan" jisme 3-way handshake complete nahi hota (SYN bhejo → SYN-ACK mila → RST bhejo).
+- **Service Version Detection (\`-sV\`)**: Banner grabbing aur protocol probes se exact software version detect karta hai.
+- **Port States**: \`open\` (service listening), \`closed\` (RST received), \`filtered\` (firewall dropping packets).
+
+**3. Practical Hands-On Command:**
+\`\`\`bash
+# Fast stealth scan with service versions on standard top 1000 ports
+nmap -sS -sV -T4 10.10.10.50
+\`\`\`
+
+**4. Real-World Threat / Defensive Context:**
+Attackers reconnaissance phase me vulnerable services (jaise outdated Apache, SSH, SMB) dhoondhte hain. Defenders ko regular audit karna chahiye aur unused ports ko firewall se block rakhna chahiye.
+
+**5. Next Action:**
+Aap is command ko Network Lab me test kar sakte hain!
+[ACTION:OPEN_MODULE:/network-lab]`;
+      summary = `Explaining Port Scanning & Nmap in Hinglish. [ACTION:OPEN_MODULE:/network-lab]`;
+    } else {
+      fullText = `### 🔍 Port Scanning & Network Reconnaissance
+
+**1. Concept Overview:**
+Port scanning is an active reconnaissance technique used to probe a target IP address for open network ports and accessible services.
+
+**2. Technical Mechanics:**
+- **TCP SYN Scan (\`-sS\`)**: Half-open scanning that sends SYN packets without completing the full 3-way handshake (SYN → SYN-ACK → RST).
+- **Service Version Detection (\`-sV\`)**: Probes listening ports with protocol banners to identify software names and exact versions.
+- **Port States**: \`open\` (actively listening), \`closed\` (RST received), \`filtered\` (firewall or packet filter dropped the probe).
+
+**3. Practical Hands-On Syntax:**
+\`\`\`bash
+# Run stealth SYN scan with OS & service version detection
+nmap -sS -sV -O -T4 10.10.10.50
+\`\`\`
+
+**4. Defensive & Incident Context:**
+Attackers utilize open port discovery to locate unpatched services (such as vulnerable SMB, RDP, or HTTP daemons). Blue teams monitor network logs for rapid SYN sequences and enforce strict egress/ingress firewall rules.
+
+**5. Recommended Next Step:**
+Test this live in our Network Reconnaissance Lab!
+[ACTION:OPEN_MODULE:/network-lab]`;
+      summary = `Explaining Port Scanning & Nmap reconnaissance. [ACTION:OPEN_MODULE:/network-lab]`;
+    }
+  }
+  else if (/subnet|cidr|ip address|gateway|mask/i.test(userQuery)) {
+    if (isHinglish) {
+      fullText = `### 🌐 CIDR & Subnetting Fundamentals
+
+**1. Concept in Simple Terms:**
+Subnetting ek large IP network ko smaller, isolated sub-networks me divide karne ka process hai, taaki network security aur performance improve ho sake.
+
+**2. Under the Hood Mechanics:**
+- **CIDR Notation (\`/24\`)**: Total 32-bit IPv4 address me se pehle 24 bits network ID ke liye hote hain, bache 8 bits host ke liye.
+- **Host Calculation Formula**: \`2^(32 - Prefix) - 2\` (2 subtract karte hain Network Address aur Broadcast Address ke liye).
+- **Example (/24)**: \`2^(32 - 24) - 2 = 2^8 - 2 = 254\` usable host addresses.
+- **Example (/28)**: \`2^(32 - 28) - 2 = 2^4 - 2 = 14\` usable host addresses.
+
+**3. Practical Example:**
+Network \`192.168.1.0/24\`:
+- **Subnet Mask**: \`255.255.255.0\`
+- **Network ID**: \`192.168.1.0\`
+- **First Usable Host**: \`192.168.1.1\` (Gateway)
+- **Last Usable Host**: \`192.168.1.254\`
+- **Broadcast**: \`192.168.1.255\`
+
+**4. Real-World Application:**
+DMZ, internal databases, aur corporate workstations ko alag-alag subnets me rakhna segmentation ka golden rule hai.
+
+**5. Next Action:**
+Practice your calculation speed in our Subnetting Trainer!
+[ACTION:OPEN_MODULE:/subnetting-trainer]`;
+      summary = `Explaining CIDR Subnetting in Hinglish. [ACTION:OPEN_MODULE:/subnetting-trainer]`;
+    } else {
+      fullText = `### 🌐 CIDR & Subnetting Mechanics
+
+**1. Core Concept:**
+Subnetting partitions a larger IP address space into distinct, routable sub-networks to reduce broadcast traffic and enforce security boundaries.
+
+**2. Low-Level Mechanics:**
+- **CIDR Prefix**: Indicates the number of leading masked network bits out of 32 total bits.
+- **Usable Host Formula**: \`2^(32 - Prefix) - 2\` (excluding the network ID and broadcast address).
+- **Prefix Breakdown**:
+  - \`/24\` = 256 total IPs = **254 usable hosts** (Mask: \`255.255.255.0\`)
+  - \`/26\` = 64 total IPs = **62 usable hosts** (Mask: \`255.255.255.192\`)
+  - \`/28\` = 16 total IPs = **14 usable hosts** (Mask: \`255.255.255.240\`)
+
+**3. Architecture & Security Context:**
+Isolating web-facing assets into a dedicated DMZ subnet while securing internal databases on private non-routable subnets prevents lateral movement during a breach.
+
+**4. Hands-On Practice:**
+Master rapid CIDR calculations in our Subnetting Trainer.
+[ACTION:OPEN_MODULE:/subnetting-trainer]`;
+      summary = `Explaining CIDR Subnetting mechanics. [ACTION:OPEN_MODULE:/subnetting-trainer]`;
+    }
+  }
+  else if (/sql injection|sqli|injection|database exploit/i.test(userQuery)) {
+    if (isHinglish) {
+      fullText = `### 💉 SQL Injection (SQLi) Mastery
+
+**1. Concept in Simple Terms:**
+SQL Injection tab hoti hai jab user input ko bina sanitize kiye direct database SQL query string ke andar concatenate kar diya jata hai.
+
+**2. Under the Hood Mechanics:**
+- Vulnerable query: \`SELECT * FROM users WHERE username = '\` + \`userInput\` + \`' AND password = '...'\`
+- Agar input \`admin' OR '1'='1\` pass kiya jaye, to SQL condition \`'1'='1'\` hamesha TRUE evaluate hoti hai, aur authentication bypass ho jata hai.
+- **UNION-based SQLi**: Attacker \`UNION SELECT\` use karke database ke confidential tables (jaise credentials, hashes) ko dump kar leta hai.
+
+**3. Secure Remediation (Fix):**
+Hamesha **Parameterized Queries (Prepared Statements)** use karein:
+\`\`\`javascript
+// Secure Implementation
+db.execute("SELECT * FROM users WHERE username = ? AND password_hash = ?", [username, hash]);
+\`\`\`
+
+**4. Next Action:**
+Test vulnerable login bypass payloads safely in our Web Security Lab!
+[ACTION:OPEN_MODULE:/practice/web-security]`;
+      summary = `Explaining SQL Injection and remediation in Hinglish. [ACTION:OPEN_MODULE:/practice/web-security]`;
+    } else {
+      fullText = `### 💉 SQL Injection (OWASP Top 10)
+
+**1. Fundamental Principle:**
+SQL Injection occurs when untrusted user input is directly concatenated into a dynamic database query, allowing an attacker to manipulate the query logic.
+
+**2. Technical Mechanics:**
+- **Auth Bypass**: Supplying input like \`admin' OR 1=1 --\` forces the \`WHERE\` clause to evaluate to \`true\`, bypassing credential checks.
+- **UNION-Based Extraction**: Appends additional query results to exfiltrate schema metadata, column counts, and database records.
+- **Blind & Time-Based SQLi**: Exploits boolean conditions or database sleep functions (\`pg_sleep()\`, \`SLEEP()\`) when error output is suppressed.
+
+**3. Industry Standard Remediation:**
+Never concatenate raw strings into SQL statements. Use parameterized queries (Prepared Statements) with an ORM or database driver:
+\`\`\`typescript
+const query = 'SELECT id, email FROM accounts WHERE username = $1 AND active = true';
+const result = await db.query(query, [sanitizedUsername]);
+\`\`\`
+
+**4. Hands-On Lab:**
+Practice testing and fixing injection vulnerabilities in our Web Security Lab.
+[ACTION:OPEN_MODULE:/practice/web-security]`;
+      summary = `Explaining SQL Injection and Prepared Statements. [ACTION:OPEN_MODULE:/practice/web-security]`;
+    }
+  }
+  // 8. GENERAL QUERY / FALLBACK
   else {
     let contextExplanation = '';
     if (intentResult.useRoomContext) {

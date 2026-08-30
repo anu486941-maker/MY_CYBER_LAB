@@ -84,7 +84,7 @@ function getAvailableModels(candidates: string[]): string[] {
 
 async function generateContentWithFallback(client: GoogleGenAI, params: any) {
   let lastError: any = null;
-  const rawModels = Array.from(new Set([process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS]));
+  const rawModels = Array.from(new Set([process.env.GEMINI_MODEL || 'gemini-3.6-flash', ...GEMINI_FALLBACK_MODELS]));
   const models = getAvailableModels(rawModels);
   const startTime = Date.now();
 
@@ -123,6 +123,12 @@ async function generateContentWithFallback(client: GoogleGenAI, params: any) {
         // Rate limit: mark for 30s and move to next candidate immediately
         if (classified.code === 'RATE_LIMITED') {
           markModelUnavailable(modelName, 30 * 1000);
+          break;
+        }
+
+        // Timeout: mark for 20s and move to next candidate immediately
+        if (classified.code === 'TIMEOUT') {
+          markModelUnavailable(modelName, 20 * 1000);
           break;
         }
 
@@ -642,7 +648,7 @@ app.use('/api/investigate', strictLimiter);
 - Summarize with actionable next steps.`;
       }
 
-      const systemInstruction = `You are AMAN, the central intelligence and autonomous Senior Cybersecurity Instructor of MY CYBER LAB.
+      const systemInstruction = `You are AMAN, the central intelligence and autonomous Senior Cybersecurity Instructor & Mentor of MY CYBER LAB.
 You are the learner's personal mentor, tutor, and career strategist.
 
 PRIMARY OBJECTIVES:
@@ -650,6 +656,15 @@ PRIMARY OBJECTIVES:
 2. PROVIDE CONTINUOUS ADAPTIVE GUIDANCE: Recommend what to do next and explain WHY.
 3. ADAPT TO TEACHING MODE:
 ${modeGuideline}
+
+PEDAGOGICAL EXCELLENCE (FOR TECHNICAL CONCEPTS & LAB TOPICS):
+When explaining technical cybersecurity concepts or helping in labs:
+- Explain in simple, clear language before diving deep.
+- Provide the low-level technical mechanics (how packets, memory, or protocols work under the hood).
+- Include practical, hands-on command examples with precise flags where appropriate.
+- Highlight defensive context and real-world impact.
+- Structure responses cleanly using Markdown headers and bullet points.
+- Adjust complexity to the user's current cyber level (Level ${contextData?.cyberLevel || 1}).
 
 CRITICAL INTENT ROUTING & CONTEXT GATING (IMMUTABLE):
 1. USER INTENT OVERRIDES CURRENT PAGE CONTEXT. The learner's current room/module is background telemetry, NEVER their intent.
@@ -797,40 +812,104 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
       }
       const activeToolsConfig = baseTools.length > 0 ? baseTools : undefined;
 
-      const formattedHistory = (history || []).map((msg: any) => {
-        const role = (msg.role === 'aman' || msg.role === 'model') ? 'model' : 'user';
+      // Sanitize history turns to strictly alternate roles and remove empty text parts
+      const rawHistory = Array.isArray(history) ? history : [];
+      const validHistoryTurns: { role: 'user' | 'model'; parts: any[] }[] = [];
+
+      for (const msg of rawHistory) {
+        if (!msg || typeof msg !== 'object') continue;
+        const role: 'user' | 'model' = (msg.role === 'aman' || msg.role === 'model' || msg.role === 'assistant') ? 'model' : 'user';
         let rawParts = msg.parts;
         if (!rawParts || !Array.isArray(rawParts)) {
-          rawParts = [{ text: msg.text || '' }];
+          if (typeof msg.text === 'string' && msg.text.trim().length > 0) {
+            rawParts = [{ text: msg.text.trim() }];
+          } else {
+            rawParts = [];
+          }
         }
-        const parts = rawParts
+
+        const cleanParts = rawParts
           .map((p: any) => {
-            if (typeof p === 'string') return { text: p };
+            if (typeof p === 'string') {
+              const trimmed = p.trim();
+              return trimmed.length > 0 ? { text: trimmed } : null;
+            }
             if (p && typeof p === 'object') {
-              if (typeof p.text === 'string') return { text: p.text };
+              if (typeof p.text === 'string') {
+                const trimmed = p.text.trim();
+                return trimmed.length > 0 ? { text: trimmed } : null;
+              }
               if (p.inlineData) return { inlineData: p.inlineData };
-              if (p.functionCall) return { functionCall: p.functionCall };
-              if (p.functionResponse) return { functionResponse: p.functionResponse };
+              if (p.functionCall) {
+                const fnName = p.functionCall.name || 'action';
+                return { text: `[Action requested: ${fnName}]` };
+              }
+              if (p.functionResponse) {
+                const fnName = p.functionResponse.name || 'action';
+                return { text: `[Action result for ${fnName}]` };
+              }
             }
             return null;
           })
           .filter(Boolean);
 
-        return {
-          role,
-          parts: parts.length > 0 ? parts : [{ text: '' }]
-        };
-      });
+        if (cleanParts.length > 0) {
+          validHistoryTurns.push({ role, parts: cleanParts });
+        }
+      }
+
+      // Merge consecutive turns with the same role to enforce strict role alternation
+      const formattedHistory: { role: 'user' | 'model'; parts: any[] }[] = [];
+      for (const turn of validHistoryTurns) {
+        if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === turn.role) {
+          formattedHistory[formattedHistory.length - 1].parts.push(...turn.parts);
+        } else {
+          formattedHistory.push({ role: turn.role, parts: [...turn.parts] });
+        }
+      }
+
+      // Ensure history array starts with 'user' role for Gemini API compliance
+      while (formattedHistory.length > 0 && formattedHistory[0].role === 'model') {
+        formattedHistory.shift();
+      }
 
       let chatMessageContent: any = message;
-      if (typeof message === 'object' && message.parts) {
-        chatMessageContent = message.parts;
-      } else if (typeof message === 'object' && Array.isArray(message)) {
-        chatMessageContent = message;
-      } else if (typeof message === 'string') {
+      if (typeof message === 'string') {
         chatMessageContent = message.trim() || 'Hello';
+      } else if (message && typeof message === 'object' && typeof message.text === 'string' && !Array.isArray(message.parts)) {
+        chatMessageContent = message.text.trim() || 'Hello';
+      } else if (message && typeof message === 'object' && Array.isArray(message.parts)) {
+        const cleanParts = message.parts.map((p: any) => {
+          if (typeof p === 'string') {
+            const trimmed = p.trim();
+            return trimmed.length > 0 ? { text: trimmed } : null;
+          }
+          if (p && typeof p === 'object') {
+            if (p.functionCall) return { text: `[Action requested: ${p.functionCall.name || 'action'}]` };
+            if (p.functionResponse) return { functionResponse: p.functionResponse };
+            if (p.inlineData) return { inlineData: p.inlineData };
+            if (typeof p.text === 'string' && p.text.trim().length > 0) return { text: p.text.trim() };
+          }
+          return null;
+        }).filter(Boolean);
+        chatMessageContent = cleanParts.length > 0 ? cleanParts : 'Hello';
+      } else if (Array.isArray(message)) {
+        const cleanParts = message.map((p: any) => {
+          if (typeof p === 'string') {
+            const trimmed = p.trim();
+            return trimmed.length > 0 ? { text: trimmed } : null;
+          }
+          if (p && typeof p === 'object') {
+            if (p.functionCall) return { text: `[Action requested: ${p.functionCall.name || 'action'}]` };
+            if (p.functionResponse) return { functionResponse: p.functionResponse };
+            if (p.inlineData) return { inlineData: p.inlineData };
+            if (typeof p.text === 'string' && p.text.trim().length > 0) return { text: p.text.trim() };
+          }
+          return null;
+        }).filter(Boolean);
+        chatMessageContent = cleanParts.length > 0 ? cleanParts : 'Hello';
       } else {
-        chatMessageContent = String(message || 'Hello');
+        chatMessageContent = String(message || 'Hello').trim() || 'Hello';
       }
 
       let stream: any = null;
@@ -839,8 +918,8 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
       const chatHandlerStartTime = Date.now();
 
       const modelCandidates = executionMode === 'DEEP' 
-        ? [process.env.GEMINI_DEEP_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS]
-        : [process.env.GEMINI_FAST_MODEL || 'gemini-3.1-flash-lite', ...GEMINI_FALLBACK_MODELS];
+        ? [process.env.GEMINI_DEEP_MODEL || 'gemini-3.6-flash', ...GEMINI_FALLBACK_MODELS]
+        : [process.env.GEMINI_FAST_MODEL || 'gemini-3.6-flash', ...GEMINI_FALLBACK_MODELS];
       const uniqueModelCandidates = getAvailableModels(Array.from(new Set(modelCandidates)));
 
       for (const modelName of uniqueModelCandidates) {
@@ -854,6 +933,46 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
             break;
           }
           try {
+            // Build sanitized diagnostic structure
+            const sanitizedDiagnostic = {
+              model: modelName,
+              systemInstruction: {
+                present: !!systemInstruction,
+                type: typeof systemInstruction,
+                length: typeof systemInstruction === 'string' ? systemInstruction.length : 0,
+              },
+              tools: activeToolsConfig ? activeToolsConfig.map((t: any) => ({
+                hasFunctionDeclarations: !!t.functionDeclarations,
+                functionDeclarationCount: t.functionDeclarations?.length || 0,
+                functionNames: t.functionDeclarations?.map((f: any) => f.name) || [],
+                hasGoogleSearch: !!t.googleSearch,
+              })) : null,
+              historyLength: formattedHistory.length,
+              historyStructure: formattedHistory.map((turn, i) => ({
+                index: i,
+                role: turn.role,
+                partsCount: turn.parts.length,
+                parts: turn.parts.map((p: any) => {
+                  if (p.text !== undefined) return { type: 'text', length: p.text.length, isEmpty: p.text === '' };
+                  if (p.inlineData) return { type: 'inlineData', mimeType: p.inlineData.mimeType };
+                  if (p.functionCall) return { type: 'functionCall', name: p.functionCall.name };
+                  if (p.functionResponse) return { type: 'functionResponse', name: p.functionResponse.name };
+                  return { type: 'unknown', keys: Object.keys(p) };
+                })
+              })),
+              messageStructure: {
+                type: typeof chatMessageContent,
+                isString: typeof chatMessageContent === 'string',
+                textLength: typeof chatMessageContent === 'string' ? chatMessageContent.length : undefined,
+                parts: Array.isArray(chatMessageContent) ? chatMessageContent.map((p: any) => ({
+                  type: typeof p === 'string' ? 'string' : (p.text !== undefined ? 'text' : (p.inlineData ? 'inlineData' : 'unknown')),
+                  length: typeof p === 'string' ? p.length : p.text?.length
+                })) : undefined
+              }
+            };
+
+            console.log('[AMAN OUTBOUND GEMINI REQUEST DIAGNOSTIC]:\n' + JSON.stringify(sanitizedDiagnostic, null, 2));
+
             const chat = client.chats.create({
               model: modelName,
               config: { 
@@ -875,17 +994,39 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
           } catch (err: any) {
             lastError = err;
             const classified = classifyGeminiError(err);
-            console.warn(`[AMAN Chat] ${modelName} attempt ${attempt} failed (${classified.code}: ${classified.technicalDetails})`);
+            const toolCount = selectedToolNames.size;
+            console.error('[AMAN GEMINI UPSTREAM ERROR COMPLETE]:', {
+              httpStatus: err?.status || err?.statusCode || classified.httpStatus || 400,
+              errorCode: err?.code || classified.code,
+              errorMessage: err?.message,
+              errorStatus: err?.errorStatus || err?.status,
+              details: err?.details || err?.errorDetails || err?.response || err?.error,
+              rawError: JSON.stringify(err, Object.getOwnPropertyNames(err))
+            });
+            console.warn(`[AMAN Chat] Model: ${modelName} | Mode: ${executionMode}/${activeMode} | Tools: ${toolCount} | Attempt: ${attempt} | ErrorCategory: ${classified.code} | Status: ${classified.httpStatus || 400} | Details: ${classified.technicalDetails || classified.userFacingMessage}`);
             
+            // Daily Quota Exhausted: quarantine model for 24h window and advance immediately to fallback models
+            if (classified.code === 'DAILY_QUOTA_EXHAUSTED') {
+              console.warn(`[AMAN Chat Quota Policy] Daily quota exhausted for ${modelName}. Quarantining for 24h. Advancing immediately to fallback models.`);
+              markModelUnavailable(modelName, 24 * 60 * 60 * 1000);
+              break;
+            }
+
             // Permanent / unauthenticated / not-found errors: skip immediately
             if (classified.code === 'AUTHENTICATION_OR_PERMISSION_ERROR' || err?.status === 404) {
               markModelUnavailable(modelName, 5 * 60 * 1000);
               break;
             }
 
-            // Rate limit: mark for 30s and move to next candidate immediately
+            // Rate limit (temporary burst): mark for 30s and move to next candidate immediately
             if (classified.code === 'RATE_LIMITED') {
               markModelUnavailable(modelName, 30 * 1000);
+              break;
+            }
+
+            // Timeout: mark for 20s and move to next candidate immediately
+            if (classified.code === 'TIMEOUT') {
+              markModelUnavailable(modelName, 20 * 1000);
               break;
             }
 

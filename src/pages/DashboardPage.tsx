@@ -53,7 +53,7 @@ export const DashboardPage: React.FC = () => {
   } = useApp();
   const navigate = useNavigate();
 
-  const chosenRoleKey = profile.selectedRole || profile.targetRole || 'soc-analyst';
+  const chosenRoleKey = profile?.selectedRole || profile?.targetRole || 'soc-analyst';
   const roleConfig = getRolePersonalization(chosenRoleKey);
   const currentRole = getCareerRoleById(chosenRoleKey);
   const { position, nextMove } = learningState;
@@ -153,7 +153,7 @@ export const DashboardPage: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               </div>
               <h1 className="text-xl sm:text-2xl font-mono font-bold text-white">
-                Welcome back, {profile.name || profile.codename || 'Operator'}
+                Welcome back, {profile?.name || profile?.codename || 'Operator'}
               </h1>
             </div>
           </div>

@@ -272,6 +272,7 @@ export function detectAmanIntent(
   useTechnicalContext?: boolean;
 } {
   const lower = text.toLowerCase().trim();
+  const cleanLower = lower.replace(/[?!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
 
   // 1. PRIORITY 1 — CASUAL CONVERSATION (Detect first to prevent context hijacking)
   const isGreeting = 
@@ -281,6 +282,10 @@ export function detectAmanIntent(
     lower === 'hey aman' ||
     lower === 'hello aman' ||
     lower === 'hi aman' ||
+    cleanLower === 'hello aman how are you' ||
+    cleanLower === 'hi aman how are you' ||
+    cleanLower === 'hey aman how are you' ||
+    /^(hello|hi|hey|greetings|yo|hola)(\s+aman)?(\s+how\s+(are\s+you|r\s+u))?$/i.test(cleanLower) ||
     lower === 'hiii' ||
     lower === 'hy' ||
     lower === 'hyy' ||

@@ -1,5 +1,6 @@
 export type GeminiErrorCode =
   | 'RATE_LIMITED'
+  | 'DAILY_QUOTA_EXHAUSTED'
   | 'MODEL_UNAVAILABLE'
   | 'AUTHENTICATION_OR_PERMISSION_ERROR'
   | 'INVALID_REQUEST'
@@ -30,7 +31,27 @@ export function classifyGeminiError(error: any): ClassifiedGeminiError {
   const msg = String(error?.message || error?.error?.message || error || '');
   const status = error?.status || error?.code || error?.response?.status || error?.error?.code;
 
-  // 1. Rate Limited / Quota (429)
+  // 1. Daily Quota Exhausted (Check before general rate limit)
+  if (
+    msg.includes('GenerateRequestsPerDayPerProjectPerModel') ||
+    msg.includes('PerDayPerProjectPerModel') ||
+    msg.includes('per-day') ||
+    msg.includes('per_day') ||
+    (msg.includes('RESOURCE_EXHAUSTED') && (msg.includes('Day') || msg.includes('FreeTier') || msg.includes('daily'))) ||
+    msg.includes('Daily quota') ||
+    msg.includes('daily quota')
+  ) {
+    return {
+      code: 'DAILY_QUOTA_EXHAUSTED',
+      httpStatus: 429,
+      userFacingMessage: "Daily free-tier quota reached for primary model. Continuing on resilient fallback models.",
+      userFacingHinglishMessage: "Daily free-tier limit reached ho gayi hai. AMAN automatic fallback model se continue kar raha hai.",
+      isRetryable: false,
+      technicalDetails: '429 Daily Free-Tier Quota Exhausted (GenerateRequestsPerDayPerProjectPerModel-FreeTier)'
+    };
+  }
+
+  // 2. Rate Limited / Temporary RPM/TPM Quota (429)
   if (
     status === 429 ||
     msg.includes('429') ||
@@ -45,11 +66,30 @@ export function classifyGeminiError(error: any): ClassifiedGeminiError {
       userFacingMessage: "API rate limit reached. Continuing seamlessly in Local Guidance Mode.",
       userFacingHinglishMessage: "API limit hit hone ki wajah se AMAN Local Guidance Mode mein chal raha hai.",
       isRetryable: true,
-      technicalDetails: '429 Rate limit / Quota exceeded'
+      technicalDetails: '429 Rate limit / RPM/TPM burst exceeded'
     };
   }
 
-  // 2. Model Unavailable / High Demand (503)
+  // 2. Timeout (408) - Checked before 400 to prevent '4000ms' matching '400'
+  if (
+    status === 408 ||
+    msg.includes('408') ||
+    msg.includes('TIMEOUT') ||
+    msg.includes('ETIMEDOUT') ||
+    msg.includes('ECONNRESET') ||
+    msg.includes('deadline exceeded')
+  ) {
+    return {
+      code: 'TIMEOUT',
+      httpStatus: 408,
+      userFacingMessage: "Connection timed out. Retrying via Local Guidance Mode.",
+      userFacingHinglishMessage: "Network connection slow hone ki wajah se Local Guidance Mode active hai.",
+      isRetryable: true,
+      technicalDetails: '408 Timeout'
+    };
+  }
+
+  // 3. Model Unavailable / High Demand (503)
   if (
     status === 503 ||
     msg.includes('503') ||
@@ -68,7 +108,7 @@ export function classifyGeminiError(error: any): ClassifiedGeminiError {
     };
   }
 
-  // 3. Auth / Permission (401/403)
+  // 4. Auth / Permission (401/403)
   if (
     status === 401 ||
     status === 403 ||
@@ -88,10 +128,10 @@ export function classifyGeminiError(error: any): ClassifiedGeminiError {
     };
   }
 
-  // 4. Invalid Request (400)
+  // 5. Invalid Request (400)
   if (
     status === 400 ||
-    msg.includes('400') ||
+    (/\b400\b/.test(msg) && !msg.includes('4000')) ||
     msg.includes('INVALID_ARGUMENT') ||
     msg.includes('ContentUnion') ||
     msg.includes('schema')
@@ -103,25 +143,6 @@ export function classifyGeminiError(error: any): ClassifiedGeminiError {
       userFacingHinglishMessage: "Formatting adjust ho gayi hai. Aapka session chal raha hai.",
       isRetryable: false,
       technicalDetails: '400 Invalid Request'
-    };
-  }
-
-  // 5. Timeout (408)
-  if (
-    status === 408 ||
-    msg.includes('408') ||
-    msg.includes('TIMEOUT') ||
-    msg.includes('ETIMEDOUT') ||
-    msg.includes('ECONNRESET') ||
-    msg.includes('deadline exceeded')
-  ) {
-    return {
-      code: 'TIMEOUT',
-      httpStatus: 408,
-      userFacingMessage: "Connection timed out. Retrying via Local Guidance Mode.",
-      userFacingHinglishMessage: "Network connection slow hone ki wajah se Local Guidance Mode active hai.",
-      isRetryable: true,
-      technicalDetails: '408 Timeout'
     };
   }
 

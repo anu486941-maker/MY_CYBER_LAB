@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getAllVideos, getVideoById, getVideosByRole } from '../data/videoLearningData';
 import { getVideoRecommendationsForRole, getNextRecommendedVideo, searchVideos } from '../services/videoRecommendationEngine';
+import { verifyVideoAvailability, getVerifiedReplacementForVideo } from '../services/videoVerificationService';
 import { VideoItem, VideoLanguage } from '../types';
 import { CAREER_ROLES_DATA } from '../data/careerRolesData';
 import {
@@ -30,7 +31,8 @@ import {
   Languages,
   Copy,
   Sliders,
-  Check
+  Check,
+  ShieldCheck
 } from 'lucide-react';
 
 export const VideoLearningPage: React.FC = () => {
@@ -79,6 +81,53 @@ export const VideoLearningPage: React.FC = () => {
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<boolean>(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
+
+  // Video Availability & Health Verification State
+  const [videoAvailabilityStatus, setVideoAvailabilityStatus] = useState<'idle' | 'checking' | 'verified' | 'fallback_loaded' | 'unavailable'>('idle');
+  const [videoAvailabilityNotice, setVideoAvailabilityNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (!selectedVideo) {
+      setVideoAvailabilityStatus('idle');
+      setVideoAvailabilityNotice(null);
+      return;
+    }
+
+    // Guard: Replacement videos are already verified from fallback catalog.
+    // Do not recursively re-verify or re-enter replacement resolution.
+    if (selectedVideo.id.startsWith('verified-rep-')) {
+      setVideoAvailabilityStatus('fallback_loaded');
+      return;
+    }
+
+    setVideoAvailabilityStatus('checking');
+
+    verifyVideoAvailability(selectedVideo).then((check) => {
+      if (!isMounted) return;
+      if (check.isPlayable) {
+        setVideoAvailabilityStatus('verified');
+        setVideoAvailabilityNotice(null);
+      } else {
+        const replacement = getVerifiedReplacementForVideo(selectedVideo);
+        if (!isMounted) return;
+        if (replacement && replacement.id !== selectedVideo.id) {
+          setSelectedVideo(replacement);
+          setVideoAvailabilityStatus('fallback_loaded');
+          setVideoAvailabilityNotice(`Original lesson source (${check.status}) was unavailable on provider. Auto-switched to active verified lesson: "${replacement.title}".`);
+        } else {
+          setVideoAvailabilityStatus('unavailable');
+          setVideoAvailabilityNotice(`Video source unavailable (${check.status}: ${check.statusMessage}). Please select another lesson from the playlist.`);
+        }
+      }
+    }).catch(() => {
+      if (isMounted) {
+        setVideoAvailabilityStatus('verified');
+      }
+    });
+
+    return () => { isMounted = false; };
+  }, [selectedVideo?.id]);
 
   // Synchronize URL parameter when selectedVideo changes
   useEffect(() => {
@@ -425,6 +474,18 @@ export const VideoLearningPage: React.FC = () => {
             {/* Left 2 Cols: High-Fidelity Video Player + Sub-Tabs */}
             <div className="lg:col-span-2 space-y-6">
               
+              {/* Video Verification & Provider Health Status Notice */}
+              {videoAvailabilityNotice && (
+                <div className={`p-3 rounded-2xl border flex items-center gap-3 text-xs font-mono shadow-lg animate-fade-in ${
+                  videoAvailabilityStatus === 'fallback_loaded'
+                    ? 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+                    : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+                }`}>
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-amber-400" />
+                  <span>{videoAvailabilityNotice}</span>
+                </div>
+              )}
+
               {/* Responsive 16:9 Video Container */}
               <div className="relative aspect-video rounded-3xl overflow-hidden bg-slate-950 border-2 border-cyan-500/40 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
                 <iframe
