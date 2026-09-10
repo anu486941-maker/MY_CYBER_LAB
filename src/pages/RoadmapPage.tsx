@@ -30,6 +30,7 @@ import {
   Clock,
   Eye
 } from 'lucide-react';
+import { TodayMissionCard } from '../components/missions/TodayMissionCard';
 
 export const RoadmapPage: React.FC = () => {
   const { learningState, profile, levels, setSelectedLesson, updateProfile, activeCareerTrack } = useApp();
@@ -77,7 +78,7 @@ export const RoadmapPage: React.FC = () => {
   const progressPercentage = Math.round((completedStepsCount / currentRole.curriculumSequence.length) * 100);
 
   return (
-    <div id="roadmap-page" className="space-y-8 pb-20">
+    <div id="roadmap-page" data-aman-id="roadmap" className="space-y-8 pb-20">
       
       {/* AUTONOMOUS AMAN INSTRUCTION BANNER */}
       <AmanInstructionBanner />
@@ -152,6 +153,9 @@ export const RoadmapPage: React.FC = () => {
 
         </div>
       </div>
+
+      {/* TODAY'S MISSION: FOCUSED STARTING POINT */}
+      <TodayMissionCard />
 
       {/* Filter Tabs & Search Bar */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-3">

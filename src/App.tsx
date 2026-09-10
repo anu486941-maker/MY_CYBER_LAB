@@ -77,7 +77,9 @@ const AdminPage = lazyWithRetry(() => import('./pages/AdminPage'), 'AdminPage');
 const DualLensSimulatorPage = lazyWithRetry(() => import('./pages/DualLensSimulatorPage'), 'DualLensSimulatorPage');
 const AiWargameArenaPage = lazyWithRetry(() => import('./pages/AiWargameArenaPage'), 'AiWargameArenaPage');
 const DemoPage = lazyWithRetry(() => import('./pages/DemoPage'), 'DemoPage');
+const PricingPage = lazyWithRetry(() => import('./pages/PricingPage'), 'PricingPage');
 const DebugPage = lazyWithRetry(() => import('./pages/DebugPage'), 'DebugPage');
+const FlagCheckpointPage = lazyWithRetry(() => import('./pages/FlagCheckpointPage'), 'FlagCheckpointPage');
 
 const RoleGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { profile } = useApp();
@@ -168,6 +170,9 @@ const AppContent: React.FC = () => {
                           <Route path="/roles" element={<CareerRolesPage />} />
                           <Route path="/career-roles" element={<CareerRolesPage />} />
                           <Route path="/roadmap" element={<RoadmapPage />} />
+                          <Route path="/flag-checkpoint" element={<FlagCheckpointPage />} />
+                          <Route path="/checkpoint" element={<FlagCheckpointPage />} />
+                          <Route path="/mission/SOC-001" element={<FlagCheckpointPage />} />
                           <Route path="/modules" element={<CyberLabModulesListPage />} />
                           <Route path="/modules/:moduleId" element={<CyberLabModuleRunnerPage />} />
                           <Route path="/learn/modules" element={<CyberLabModulesListPage />} />
@@ -250,6 +255,9 @@ const AppContent: React.FC = () => {
                           <Route path="/live-battle" element={<DualLensSimulatorPage />} />
                           <Route path="/wargame" element={<AiWargameArenaPage />} />
                           <Route path="/demo" element={<DemoPage />} />
+                          <Route path="/pricing" element={<PricingPage />} />
+                          <Route path="/membership" element={<PricingPage />} />
+                          <Route path="/whop" element={<PricingPage />} />
                           <Route path="/settings" element={<SettingsPage />} />
                           <Route path="/debug" element={import.meta.env.DEV ? <DebugPage /> : <Navigate to="/dashboard" replace />} />
                           <Route path="*" element={<Navigate to="/dashboard" replace />} />

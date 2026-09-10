@@ -12,9 +12,21 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Helper function to prevent client-side privilege escalation
+    function isNotEscalatingPrivileges() {
+      return (!('membershipTier' in request.resource.data) ||
+              !('membershipTier' in resource.data) ||
+              request.resource.data.membershipTier == resource.data.membershipTier ||
+              request.resource.data.membershipTier == 'FREE');
+    }
+
     // User's private learning state & progress
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && 
+        (!('membershipTier' in request.resource.data) || request.resource.data.membershipTier == 'FREE');
+      allow update: if isOwner(userId) && isNotEscalatingPrivileges();
+      allow delete: if isOwner(userId);
     }
     
     // User's specific subcollections if any

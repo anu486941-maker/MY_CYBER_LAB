@@ -1620,3 +1620,239 @@ AmanToolRegistry.registerTool({
     return { success: false, message: 'Reset handler not available.' };
   }
 });
+
+// =============================================================
+// CATEGORY I — CYBER RANGE & CHECKPOINT TOOLS
+// =============================================================
+
+AmanToolRegistry.registerTool({
+  name: 'find_unsolved_challenge',
+  category: 'CHECKPOINT',
+  permission: 'READ_ONLY',
+  description: 'Identifies the learner\'s next unsolved cybersecurity mission, lab, or flag checkpoint challenge.',
+  parameters: {
+    type: 'object',
+    properties: {
+      category: { type: 'string', description: 'Domain focus: web-security, network, soc, linux, ctf' },
+      difficulty: { type: 'string', description: 'Beginner, Intermediate, Advanced' }
+    }
+  },
+  execute: async (params: { category?: string; difficulty?: string }, ctx: AmanExecutionContext) => {
+    const prof = ctx.profile || {};
+    const completedList = (prof.completedMissions || []) as string[];
+    const cat = (params.category || 'web-security').toLowerCase();
+
+    // Prioritize Flag Checkpoint SOC-001 if unsolved
+    if (!completedList.includes('SOC-001') && !completedList.includes('mission-soc-001')) {
+      return {
+        id: 'SOC-001',
+        title: 'SOC-001: Investigate a Suspicious Login (Flag Checkpoint)',
+        category: 'Web & Authentication Security',
+        targetMachine: 'WebForge Alpha (10.20.0.10)',
+        attackBoxIp: '10.20.0.50',
+        authorizedScope: '10.20.0.0/24',
+        difficulty: 'Beginner / Intermediate',
+        targetRoute: '/flag-checkpoint',
+        estimatedTime: '15 min',
+        description: 'Analyze anomalous authentication logs, identify attacker external IP 198.51.100.44, and extract the cryptographic verification flag token.'
+      };
+    }
+
+    // Default next unsolved web security mission
+    return {
+      id: 'SOC-002',
+      title: 'SOC-002: Detect Brute Force Activity',
+      category: 'Web & Network Triage',
+      targetMachine: 'WebForge Alpha (10.20.0.10)',
+      attackBoxIp: '10.20.0.50',
+      authorizedScope: '10.20.0.0/24',
+      difficulty: 'Intermediate',
+      targetRoute: '/flag-checkpoint',
+      estimatedTime: '20 min',
+      description: 'Detect high-velocity SSH brute-force attack burst originating from rogue external address.'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'start_cyber_machine',
+  category: 'CYBER_RANGE',
+  permission: 'LAB_ACTION',
+  description: 'Provisions and launches an isolated cyber range container target for the authorized mission.',
+  parameters: {
+    type: 'object',
+    properties: {
+      missionId: { type: 'string', description: 'Mission ID (e.g. "SOC-001", "mission-nightfall-webforge")' },
+      machineId: { type: 'string', description: 'Target machine identifier (e.g. "m-webforge-01")' }
+    },
+    required: ['missionId']
+  },
+  execute: async (params: { missionId: string; machineId?: string }, ctx: AmanExecutionContext) => {
+    const prof = ctx.profile || {};
+    const learnerId = prof.name || prof.email || 'operator-01';
+    const userTier = prof.subscriptionTier || prof.tier || 'PRO'; // Default to Pro for local development/testing
+
+    try {
+      const res = await fetch('/api/range/session/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          learnerId,
+          missionId: params.missionId,
+          userTier,
+          licenseKey: prof.licenseKey
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return {
+          success: false,
+          code: data.code || 'SESSION_START_FAILED',
+          error: data.error || 'Failed to start cyber range machine.',
+          upgradeUrl: data.upgradeUrl
+        };
+      }
+
+      // Persist session locally
+      try {
+        localStorage.setItem('mcl_active_range_session', JSON.stringify(data.session));
+      } catch {}
+
+      return {
+        success: true,
+        sessionId: data.session.sessionId,
+        lifecycleStatus: data.session.lifecycleStatus,
+        targetMachine: data.session.targetMachineIds[0] || 'm-webforge-01',
+        attackBox: data.session.attackBoxConfig,
+        environmentLabel: data.session.environmentLabel || 'Controlled Cybersecurity Training Sandbox',
+        isRealVm: false,
+        expiresAt: data.session.expiresAt,
+        message: `Cyber Range target online. AttackBox assigned at ${data.session.attackBoxConfig.attackBoxIp}.`
+      };
+    } catch (e: any) {
+      return {
+        success: true,
+        sessionId: `crs_sim_${Date.now()}`,
+        lifecycleStatus: 'ACTIVE',
+        targetMachine: params.machineId || 'm-webforge-01',
+        attackBox: {
+          attackBoxIp: '10.20.0.50',
+          hostname: 'aman-attackbox.lab',
+          assignedSubnet: '10.20.0.0/24'
+        },
+        environmentLabel: 'Controlled Cybersecurity Training Sandbox (Offline Mode)',
+        isRealVm: false,
+        message: 'Sandbox target initialized in offline-safe mode.'
+      };
+    }
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_cyber_machine_status',
+  category: 'CYBER_RANGE',
+  permission: 'READ_ONLY',
+  description: 'Queries active container runtime status, assigned IP address, and scope compliance.',
+  parameters: {
+    type: 'object',
+    properties: {
+      sessionId: { type: 'string', description: 'Active session ID' }
+    }
+  },
+  execute: async (params: { sessionId?: string }) => {
+    let sid = params.sessionId;
+    if (!sid) {
+      try {
+        const saved = localStorage.getItem('mcl_active_range_session');
+        if (saved) sid = JSON.parse(saved).sessionId;
+      } catch {}
+    }
+
+    if (!sid) {
+      return {
+        status: 'STANDBY',
+        message: 'No active cyber range session. Say "Start my machine" to launch your authorized sandbox.'
+      };
+    }
+
+    try {
+      const res = await fetch(`/api/range/session/${encodeURIComponent(sid)}`);
+      if (res.ok) {
+        const data = await res.json();
+        return {
+          success: true,
+          session: data.session
+        };
+      }
+    } catch {}
+
+    return {
+      status: 'ACTIVE',
+      sessionId: sid,
+      targetMachine: 'WebForge Alpha (10.20.0.10)',
+      attackBoxIp: '10.20.0.50',
+      environmentLabel: 'Controlled Cybersecurity Training Sandbox'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'verify_checkpoint_flag',
+  category: 'CHECKPOINT',
+  permission: 'LAB_ACTION',
+  description: 'Authoritatively submits and cryptographically verifies a flag token against the mission checkpoint.',
+  parameters: {
+    type: 'object',
+    properties: {
+      missionId: { type: 'string', description: 'Mission ID (e.g. "SOC-001")' },
+      submission: { type: 'string', description: 'The captured flag string (e.g. "FLAG{...}" or IP)' },
+      hintsUsedCount: { type: 'number', description: 'Number of Socratic hints used during mission' }
+    },
+    required: ['missionId', 'submission']
+  },
+  execute: async (params: { missionId: string; submission: string; hintsUsedCount?: number }, ctx: AmanExecutionContext) => {
+    const prof = ctx.profile || {};
+    try {
+      const res = await fetch('/api/mission/checkpoint-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          missionId: params.missionId,
+          submission: params.submission,
+          hintsUsedCount: params.hintsUsedCount || 0,
+          userTier: prof.subscriptionTier || 'PRO',
+          licenseKey: prof.licenseKey
+        })
+      });
+
+      const data = await res.json();
+      if (data.verified && data.evidence && ctx.addEvidence) {
+        ctx.addEvidence({
+          title: `Verified Flag: ${data.missionTitle || params.missionId}`,
+          description: data.evidence.artifact || `Authoritatively verified flag for ${params.missionId}. Score: ${data.score}%`,
+          type: 'FLAG_TOKEN',
+          category: 'ENGAGEMENT_FINDING',
+          severity: 'HIGH',
+          mitreTechnique: 'T1078'
+        });
+      }
+
+      if (data.verified && ctx.addXp) {
+        ctx.addXp(data.score || 100, `Flag Checkpoint: ${data.missionTitle || params.missionId}`);
+      }
+
+      return data;
+    } catch (e: any) {
+      return {
+        success: false,
+        verified: false,
+        error: 'Unable to reach authoritative verification server.'
+      };
+    }
+  }
+});
+
+export { AmanToolRegistryV3 } from './amanToolRegistryV3';
+
+

@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { SyncIndicatorBadge } from '../common/SyncIndicatorBadge';
 import { LanguageSelector } from '../common/LanguageSelector';
 import { WhereAmIModal } from '../common/WhereAmIModal';
+import { WhopTierBadge } from '../common/WhopTierBadge';
 import { 
   Shield, 
   Flame, 
@@ -181,11 +182,24 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
               <Sparkles className="w-3 h-3 text-purple-400" />
               AI MENTOR
             </Link>
+            <Link
+              to="/pricing"
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
+                location.pathname === '/pricing'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                  : 'text-amber-400/90 hover:text-amber-200 hover:bg-amber-950/40'
+              }`}
+            >
+              <Award className="w-3 h-3 text-amber-400" />
+              WHOP PASS
+            </Link>
           </nav>
 
 
           {/* Right: Operator Telemetry & Profile Badges */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Whop Membership Status Pill */}
+            <WhopTierBadge className="hidden sm:inline-flex" />
             {/* Mobile WHERE AM I trigger */}
             <button
               onClick={() => setIsWhereAmIOpen(true)}

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { getCareerRoleById } from '../data/careerRolesData';
@@ -35,6 +35,8 @@ import {
 import { ModeToggleBanner } from '../components/common/ModeToggleBanner';
 import { GlobalProgressBar } from '../components/common/GlobalProgressBar';
 import { AmanInstructionBanner } from '../components/common/AmanInstructionBanner';
+import { TodayMissionCard } from '../components/missions/TodayMissionCard';
+import { AmanLevelCalibrationModal } from '../components/assessment/AmanLevelCalibrationModal';
 
 export const DashboardPage: React.FC = () => {
   const { 
@@ -52,6 +54,7 @@ export const DashboardPage: React.FC = () => {
     labScores
   } = useApp();
   const navigate = useNavigate();
+  const [isCalibrationOpen, setIsCalibrationOpen] = useState<boolean>(false);
 
   const chosenRoleKey = profile?.selectedRole || profile?.targetRole || 'soc-analyst';
   const roleConfig = getRolePersonalization(chosenRoleKey);
@@ -130,7 +133,7 @@ export const DashboardPage: React.FC = () => {
   ];
 
   return (
-    <div id="dashboard-page" className="space-y-6 pb-16">
+    <div id="dashboard-page" data-aman-id="dashboard" className="space-y-6 pb-16">
       
       {/* AUTONOMOUS AMAN INSTRUCTION BANNER */}
       <AmanInstructionBanner />
@@ -158,15 +161,26 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Role Selector Badge */}
-          <Link
-            to="/select-role"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 text-xs font-mono font-bold transition-all shrink-0 self-start sm:self-auto hover:border-cyan-400 group"
-          >
-            <span>{roleConfig.emoji}</span>
-            <span>Role: <strong className="text-white">{roleConfig.title}</strong></span>
-            <span className="text-[10px] text-cyan-400 underline ml-1 group-hover:text-cyan-300">Change Role →</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button
+              onClick={() => setIsCalibrationOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-300 hover:bg-amber-900/80 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm"
+              title="Calibrate your starting level with AMAN (Beginner, Foundation, Intermediate, Advanced)"
+            >
+              <Brain className="w-3.5 h-3.5 text-amber-400" />
+              <span>Level: <strong className="text-white">{profile.calibratedLevel || 'Calibrate'}</strong></span>
+            </button>
+
+            {/* Active Role Selector Badge */}
+            <Link
+              to="/select-role"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-900/80 text-xs font-mono font-bold transition-all shrink-0 hover:border-cyan-400 group"
+            >
+              <span>{roleConfig.emoji}</span>
+              <span>Role: <strong className="text-white">{roleConfig.title}</strong></span>
+              <span className="text-[10px] text-cyan-400 underline ml-1 group-hover:text-cyan-300">Change Role →</span>
+            </Link>
+          </div>
         </div>
 
         {/* Telemetry Status Row: Role & Focus | You Are Here | Path Progress */}
@@ -297,6 +311,15 @@ export const DashboardPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* TODAY'S MISSION: HIGHLIGHTED END-TO-END PRO LEARNING LOOP */}
+      <TodayMissionCard />
+
+      {/* Aman Level Assessment / Calibration Modal */}
+      <AmanLevelCalibrationModal
+        isOpen={isCalibrationOpen}
+        onClose={() => setIsCalibrationOpen(false)}
+      />
 
       {/* Operator Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -1,13 +1,19 @@
 /**
  * AMAN 3.0 Learning Brain & Orchestrator
  * Central intelligence coordinating:
- * - Learner Profile & Evidence-based Mastery (Unknown -> Mastered)
- * - Prerequisite Dependency Graph
+ * - Learner Profile & Multi-factor Evidence Mastery (Unknown -> Mastered)
+ * - 19-Level Prerequisite Dependency Graph
  * - Next-Best-Action Recommendation Engine
- * - Dynamic Curriculum Generation & Mistake Memory
- * - Safe Lab & Challenge Orchestration
+ * - Dynamic Assessment & Lab Alignment
  * - Career Gap Analysis & Portfolio Project Builder
  */
+
+import { 
+  MASTER_CONCEPTS_GRAPH, 
+  MASTER_CURRICULUM_LEVELS, 
+  MasterConcept, 
+  CurriculumLevel 
+} from '../data/masterCurriculumGraph';
 
 export type MasteryLevel = 'UNKNOWN' | 'INTRODUCED' | 'LEARNING' | 'PRACTICING' | 'COMPETENT' | 'MASTERED';
 
@@ -39,6 +45,7 @@ export interface LearnerSkillState {
   practicalAttempts: number;
   lastPracticed: string; // ISO date
   identifiedMistakes: string[];
+  highestHintUsed?: number;
 }
 
 export interface CompactMistakeRecord {
@@ -51,7 +58,7 @@ export interface CompactMistakeRecord {
 
 export interface LearnerProfile {
   userId: string;
-  targetCareer: 'SOC_ANALYST' | 'PENETRATION_TESTER' | 'BLUE_TEAM' | 'SECURITY_ENGINEER' | 'NETWORK_SECURITY';
+  targetCareer: 'SOC_ANALYST' | 'PENETRATION_TESTER' | 'BLUE_TEAM' | 'SECURITY_ENGINEER' | 'NETWORK_SECURITY' | 'DFIR_EXAMINER' | 'CLOUD_SECURITY' | 'AI_SECURITY';
   currentOverallLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
   preferredLanguage: 'ENGLISH' | 'HINDI' | 'HINGLISH';
   skills: Record<string, LearnerSkillState>;
@@ -66,10 +73,12 @@ export interface NextBestAction {
   route: string;
   estimatedMinutes: number;
   secondaryActions: { title: string; route: string }[];
+  conceptId?: string;
 }
 
 export interface CareerGapReport {
   careerTitle: string;
+  totalRequiredSkills: number;
   readinessPercentage: number;
   readySkills: string[];
   nearReadySkills: string[];
@@ -82,218 +91,45 @@ export interface CareerGapReport {
 }
 
 export class AmanLearningBrain {
-  public static readonly SKILL_GRAPH: Record<string, SkillNode> = {
-    'net_fundamentals': {
-      id: 'net_fundamentals',
-      name: 'Networking Fundamentals & OSI/TCP Model',
-      domain: 'Networking',
-      prerequisites: [],
-      recommendedLabRoute: '/network-lab',
-      recommendedLabName: 'Network Recon Lab',
-      keyConcepts: ['OSI 7 Layers', 'TCP/IP 4 Layers', 'Encapsulation', 'MAC vs IP']
-    },
-    'ip_addressing': {
-      id: 'ip_addressing',
-      name: 'IP Addressing & Subnetting Basics',
-      domain: 'Networking',
-      prerequisites: ['net_fundamentals'],
-      recommendedLabRoute: '/network-lab',
-      recommendedLabName: 'Subnetting Trainer',
-      keyConcepts: ['IPv4 Structure', 'CIDR Notation', 'Network vs Broadcast IP', 'Usable Hosts']
-    },
-    'tcp_udp_mechanics': {
-      id: 'tcp_udp_mechanics',
-      name: 'TCP 3-Way Handshake & UDP Mechanics',
-      domain: 'Networking',
-      prerequisites: ['ip_addressing'],
-      recommendedLabRoute: '/network-lab',
-      recommendedLabName: 'Packet Analysis Lab',
-      keyConcepts: ['SYN-SYN/ACK-ACK', 'State Management', 'Connectionless UDP', 'Ports 1-65535']
-    },
-    'nmap_recon': {
-      id: 'nmap_recon',
-      name: 'Nmap Network Scanning & Reconnaissance',
-      domain: 'Reconnaissance',
-      prerequisites: ['tcp_udp_mechanics'],
-      recommendedLabRoute: '/network-lab',
-      recommendedLabName: 'Nmap Scanning Sandbox',
-      keyConcepts: ['TCP Connect (-sT)', 'SYN Stealth (-sS)', 'Version Detection (-sV)', 'OS Fingerprint (-O)']
-    },
-    'linux_basics': {
-      id: 'linux_basics',
-      name: 'Linux Permissions & Core Administration',
-      domain: 'Linux Systems',
-      prerequisites: [],
-      recommendedLabRoute: '/linux-lab',
-      recommendedLabName: 'Linux Interactive Terminal',
-      keyConcepts: ['chmod / chown', 'Users & Groups', 'Process Management', 'Bash Piping']
-    },
-    'web_sqli': {
-      id: 'web_sqli',
-      name: 'SQL Injection (OWASP Top 10)',
-      domain: 'Web Security',
-      prerequisites: ['net_fundamentals'],
-      recommendedLabRoute: '/web-security',
-      recommendedLabName: 'Web Security Sandbox',
-      keyConcepts: ['String Concatenation', 'UNION-based Payloads', 'Boolean Injection', 'Parameterized Queries']
-    },
-    'soc_log_triage': {
-      id: 'soc_log_triage',
-      name: 'SOC Alert Triage & SIEM Log Analysis',
-      domain: 'SOC Operations',
-      prerequisites: ['net_fundamentals', 'linux_basics'],
-      recommendedLabRoute: '/soc-simulator',
-      recommendedLabName: 'SOC SIEM Incident Simulator',
-      keyConcepts: ['Brute Force Detection', 'IOC Analysis', 'Event IDs', 'Incident Containment']
-    }
-  };
+  public static readonly CONCEPTS = MASTER_CONCEPTS_GRAPH;
+  public static readonly LEVELS = MASTER_CURRICULUM_LEVELS;
 
-  /**
-   * Evaluates next best action based on real learner profile evidence.
-   */
-  public static calculateNextBestAction(profile: LearnerProfile): NextBestAction {
-    // 1. Check for unverified/unreviewed critical mistakes (Mistake Spaced Review)
-    const pendingMistake = profile.mistakeMemory.find(m => !m.recheckCompleted);
-    if (pendingMistake) {
-      return {
-        actionType: 'REVIEW_MISTAKE',
-        title: `Clarify Misconception: ${pendingMistake.conceptId}`,
-        reason: `You previously noted a misconception regarding ${pendingMistake.misconception}. Reinforcing this concept will solidify your foundation.`,
-        route: '/ai-mentor',
-        estimatedMinutes: 5,
-        secondaryActions: [
-          { title: 'Practice in Network Lab', route: '/network-lab' }
+  public static readonly CAREER_MAPPINGS: Record<string, { title: string; required: string[]; project: { title: string; description: string; milestones: string[] } }> = {
+    'SOC_ANALYST': {
+      title: 'Junior SOC / Security Analyst',
+      required: [
+        'c1_linux_fs_perms',
+        'c2_tcp_handshake',
+        'c3_cia_triad',
+        'c9_windows_event_forensics',
+        'c11_siem_architecture',
+        'c11_ioc_vs_ioa',
+        'c11_soc_alert_triage'
+      ],
+      project: {
+        title: 'Automated Python SSH Brute-Force Log Analyzer & Triage Bot',
+        description: 'Build a lightweight Python script that parses auth.log, detects IP addresses exceeding 5 failed logins within 60 seconds, and generates a structured JSON alert report with MITRE ATT&CK T1110 mapping.',
+        milestones: [
+          'Parse Linux /var/log/auth.log with regex pattern matching',
+          'Track failed attempts per IP address using sliding time windows',
+          'Correlate against known threat intel or RFC 1918 private subnets',
+          'Export structured incident reports ready for senior analyst triage'
         ]
-      };
-    }
-
-    // 2. Check current active topic state
-    const currentSkillState = profile.skills[profile.activeTopicId];
-    if (currentSkillState) {
-      if (currentSkillState.level === 'LEARNING' && currentSkillState.practicalAttempts === 0) {
-        const skill = this.SKILL_GRAPH[profile.activeTopicId];
-        return {
-          actionType: 'PRACTICE_LAB',
-          title: `Hands-on Practice: ${skill?.name || profile.activeTopicId}`,
-          reason: `You have completed initial theory. Applying this in the authorized lab environment will build muscle memory.`,
-          route: skill?.recommendedLabRoute || '/network-lab',
-          estimatedMinutes: 15,
-          secondaryActions: [
-            { title: 'Take Concept Quiz', route: '/ai-mentor' }
-          ]
-        };
       }
-
-      if (currentSkillState.level === 'PRACTICING' && currentSkillState.quizScoreAvg < 80) {
-        return {
-          actionType: 'TAKE_QUIZ',
-          title: `Assess Understanding: ${profile.activeTopicId}`,
-          reason: `Validating your knowledge with an interactive 3-question adaptive quiz will qualify you for Competent mastery.`,
-          route: '/ai-mentor',
-          estimatedMinutes: 8,
-          secondaryActions: [
-            { title: 'Review Command Anatomy', route: '/network-lab' }
-          ]
-        };
-      }
-    }
-
-    // 3. Default Next Action: Continue toward Target Career Track
-    if (profile.targetCareer === 'SOC_ANALYST') {
-      return {
-        actionType: 'PRACTICE_LAB',
-        title: 'SOC SIEM Log Triage Lab',
-        reason: 'Analyzing real-world auth logs aligns directly with your target SOC Analyst career milestone.',
-        route: '/soc-simulator',
-        estimatedMinutes: 20,
-        secondaryActions: [
-          { title: 'Explore SOC Career Path', route: '/career-paths' }
-        ]
-      };
-    }
-
-    return {
-      actionType: 'CONTINUE_LESSON',
-      title: 'Nmap Scanning Sandbox',
-      reason: 'Continue progressing along your cybersecurity learning path.',
-      route: '/network-lab',
-      estimatedMinutes: 15,
-      secondaryActions: [
-        { title: 'Cyber Career Paths', route: '/career-paths' }
-      ]
-    };
-  }
-
-  /**
-   * Analyzes skill gaps for target career roles and generates tailored projects.
-   */
-  public static generateCareerGapReport(profile: LearnerProfile): CareerGapReport {
-    const career = profile.targetCareer;
-    
-    if (career === 'SOC_ANALYST') {
-      const required = ['net_fundamentals', 'ip_addressing', 'tcp_udp_mechanics', 'linux_basics', 'soc_log_triage'];
-      const ready: string[] = [];
-      const nearReady: string[] = [];
-      const criticalGaps: string[] = [];
-
-      for (const req of required) {
-        const state = profile.skills[req];
-        if (state && (state.level === 'COMPETENT' || state.level === 'MASTERED')) {
-          ready.push(this.SKILL_GRAPH[req]?.name || req);
-        } else if (state && state.level === 'PRACTICING') {
-          nearReady.push(this.SKILL_GRAPH[req]?.name || req);
-        } else {
-          criticalGaps.push(this.SKILL_GRAPH[req]?.name || req);
-        }
-      }
-
-      const readinessPercentage = Math.round(((ready.length * 1.0 + nearReady.length * 0.5) / required.length) * 100);
-
-      return {
-        careerTitle: 'Junior SOC / Security Analyst',
-        readinessPercentage,
-        readySkills: ready,
-        nearReadySkills: nearReady,
-        criticalGaps,
-        recommendedProject: {
-          title: 'Automated Python SSH Brute-Force Log Analyzer',
-          description: 'Build a lightweight Python script that parses auth.log, detects IP addresses exceeding 5 failed logins within 60 seconds, and generates a structured JSON alert report with MITRE ATT&CK T1110 mapping.',
-          milestones: [
-            'Parse Linux /var/log/auth.log with regex pattern matching',
-            'Track failed attempts per IP address using sliding time windows',
-            'Correlate against known threat intel or RFC 1918 private subnets',
-            'Export structured incident reports ready for senior analyst triage'
-          ]
-        }
-      };
-    }
-
-    // Default Penetration Tester / Red Team Report
-    const required = ['net_fundamentals', 'ip_addressing', 'tcp_udp_mechanics', 'nmap_recon', 'linux_basics', 'web_sqli'];
-    const ready: string[] = [];
-    const nearReady: string[] = [];
-    const criticalGaps: string[] = [];
-
-    for (const req of required) {
-      const state = profile.skills[req];
-      if (state && (state.level === 'COMPETENT' || state.level === 'MASTERED')) {
-        ready.push(this.SKILL_GRAPH[req]?.name || req);
-      } else if (state && state.level === 'PRACTICING') {
-        nearReady.push(this.SKILL_GRAPH[req]?.name || req);
-      } else {
-        criticalGaps.push(this.SKILL_GRAPH[req]?.name || req);
-      }
-    }
-
-    const readinessPercentage = Math.round(((ready.length * 1.0 + nearReady.length * 0.5) / required.length) * 100);
-
-    return {
-      careerTitle: 'Junior Penetration Tester / Ethical Hacker',
-      readinessPercentage,
-      readySkills: ready,
-      nearReadySkills: nearReady,
-      criticalGaps,
-      recommendedProject: {
+    },
+    'PENETRATION_TESTER': {
+      title: 'Junior Penetration Tester / Ethical Hacker',
+      required: [
+        'c1_linux_fs_perms',
+        'c2_tcp_handshake',
+        'c4_nmap_scanning',
+        'c4_burp_proxy',
+        'c6_sqli',
+        'c6_xss',
+        'c8_suid_capabilities',
+        'c10_kerberos_attacks'
+      ],
+      project: {
         title: 'Custom Nmap Service Enumeration & Vulnerability Correlator',
         description: 'Develop a Python-based CLI tool that accepts Nmap XML output (-oX), parses open services and banner versions, queries NVD/CVE feeds, and outputs a formatted markdown executive penetration testing report.',
         milestones: [
@@ -303,51 +139,443 @@ export class AmanLearningBrain {
           'Generate professional executive summary and mitigation advice'
         ]
       }
+    },
+    'BLUE_TEAM': {
+      title: 'Incident Responder & Threat Detection Engineer',
+      required: [
+        'c2_tcp_handshake',
+        'c9_windows_event_forensics',
+        'c11_siem_architecture',
+        'c12_hypothesis_hunting',
+        'c13_disk_artifacts',
+        'c16_sigma_detection_rules'
+      ],
+      project: {
+        title: 'Sigma-to-Splunk Automated Detection Pipeline',
+        description: 'Create a Git-driven detection engineering repository that validates Sigma YAML rules, converts them to Splunk SPL and Microsoft Sentinel KQL, and runs automated syntax tests in CI/CD.',
+        milestones: [
+          'Write 5 novel Sigma rules targeting LOLBin execution',
+          'Automate conversion with pySigma CLI',
+          'Validate telemetry mapping against MITRE ATT&CK matrix',
+          'Build automated CI verification test suite'
+        ]
+      }
+    },
+    'CLOUD_SECURITY': {
+      title: 'Cloud Security Architect / DevSecOps Engineer',
+      required: [
+        'c3_cia_triad',
+        'c5_rest_apis_json',
+        'c17_cloud_shared_responsibility',
+        'c17_cloud_iam_least_privilege',
+        'c17_cloud_storage_audit',
+        'c18_docker_isolation_breakout'
+      ],
+      project: {
+        title: 'Automated Multi-Cloud IAM Least-Privilege Auditor',
+        description: 'Develop an automated auditor that queries cloud IAM role policies, identifies wildcard permissions and overprivileged service accounts, and outputs actionable remediation JSON.',
+        milestones: [
+          'Query cloud IAM policies via SDK',
+          'Detect high-risk privilege escalation vectors (iam:PassRole, etc.)',
+          'Generate scoped least-privilege replacement policies',
+          'Integrate into GitHub Actions pull request checks'
+        ]
+      }
+    },
+    'AI_SECURITY': {
+      title: 'AI Red Teamer & LLM Security Specialist',
+      required: [
+        'c6_sqli',
+        'c6_xss',
+        'c5_rest_apis_json',
+        'c19_prompt_injection_defense',
+        'c19_insecure_tool_agency',
+        'c19_ai_red_teaming_guardrails'
+      ],
+      project: {
+        title: 'Adversarial Prompt Injection & Guardrail Evaluation Suite',
+        description: 'Construct a benchmarking suite that evaluates LLM applications against direct and indirect prompt injection attacks, measuring guardrail bypass rates and output leakage.',
+        milestones: [
+          'Implement 20 diverse adversarial jailbreak probes',
+          'Test delimiter isolation and system prompt extraction resistance',
+          'Measure latency overhead of input/output guardrails',
+          'Produce executive AI risk assessment scorecard'
+        ]
+      }
+    }
+  };
+
+  private static readonly ALIAS_MAP: Record<string, string> = {
+    'ip_addressing': 'c2_subnetting_cidr',
+    'net_fundamentals': 'c2_osi_tcpip',
+    'nmap_recon': 'c4_nmap_scanning',
+    'linux_basics': 'c1_linux_fs_perms',
+    'web_basics': 'c5_http_mechanics',
+    'sqli': 'c6_sqli',
+    'xss': 'c6_xss'
+  };
+
+  /**
+   * Resolves the learner's skill state for a given concept ID or legacy alias.
+   */
+  public static getLearnerSkill(profile: LearnerProfile, conceptIdOrAlias: string): LearnerSkillState | undefined {
+    if (profile.skills[conceptIdOrAlias]) return profile.skills[conceptIdOrAlias];
+    
+    // Check direct alias mapping
+    const graphId = this.ALIAS_MAP[conceptIdOrAlias];
+    if (graphId && profile.skills[graphId]) return profile.skills[graphId];
+    
+    // Check reverse alias mapping
+    for (const [alias, targetId] of Object.entries(this.ALIAS_MAP)) {
+      if (targetId === conceptIdOrAlias && profile.skills[alias]) {
+        return profile.skills[alias];
+      }
+    }
+
+    const concept = this.getConcept(conceptIdOrAlias);
+    if (concept && profile.skills[concept.id]) {
+      return profile.skills[concept.id];
+    }
+    return undefined;
+  }
+
+  /**
+   * Retrieves a specific concept from the master graph with fallback alias matching.
+   */
+  public static getConcept(id: string): MasterConcept | undefined {
+    if (!id || !id.trim()) return undefined;
+    if (this.CONCEPTS[id]) return this.CONCEPTS[id];
+    const mapped = this.ALIAS_MAP[id];
+    if (mapped && this.CONCEPTS[mapped]) return this.CONCEPTS[mapped];
+    
+    const lower = id.toLowerCase().trim();
+    const byKey = Object.values(this.CONCEPTS).find(c => 
+      c.id.toLowerCase() === lower || 
+      c.title.toLowerCase() === lower ||
+      (lower.length >= 3 && c.title.toLowerCase().includes(lower))
+    );
+    return byKey;
+  }
+
+  /**
+   * Returns all concepts in the master graph.
+   */
+  public static getAllConcepts(): MasterConcept[] {
+    return Object.values(this.CONCEPTS);
+  }
+
+  /**
+   * Retrieves all concepts belonging to a specific curriculum level.
+   */
+  public static getConceptsByLevel(level: number): MasterConcept[] {
+    return Object.values(this.CONCEPTS).filter(c => c.level === level);
+  }
+
+  /**
+   * Retrieves all curriculum levels.
+   */
+  public static getCurriculumLevels(): CurriculumLevel[] {
+    return this.LEVELS;
+  }
+
+  /**
+   * Validates whether all prerequisites for a given concept have been met by the learner.
+   */
+  public static checkPrerequisitesMet(conceptId: string, profile: LearnerProfile): { met: boolean; missing: string[] } {
+    const concept = this.getConcept(conceptId);
+    if (!concept || !concept.prerequisites || concept.prerequisites.length === 0) {
+      return { met: true, missing: [] };
+    }
+
+    const missing: string[] = [];
+    for (const prereqId of concept.prerequisites) {
+      const state = this.getLearnerSkill(profile, prereqId);
+      // Learner must be at least COMPETENT or MASTERED in prerequisite
+      if (!state || (state.level !== 'COMPETENT' && state.level !== 'MASTERED')) {
+        missing.push(prereqId);
+      }
+    }
+
+    return {
+      met: missing.length === 0,
+      missing
     };
   }
 
   /**
-   * Evaluates evidence to update mastery level without inflation.
+   * Evaluates next best action based on real learner profile evidence and the 19-level graph.
+   */
+  public static calculateNextBestAction(profile: LearnerProfile): NextBestAction {
+    // 1. Check for unverified/unreviewed critical mistakes (Mistake Spaced Review)
+    const pendingMistake = profile.mistakeMemory?.find(m => !m.recheckCompleted);
+    if (pendingMistake) {
+      const concept = this.getConcept(pendingMistake.conceptId);
+      return {
+        actionType: 'REVIEW_MISTAKE',
+        title: `Clarify Misconception: ${concept?.title || pendingMistake.conceptId}`,
+        reason: `You previously noted a misconception regarding "${pendingMistake.misconception}". Reinforcing this concept will solidify your foundation.`,
+        route: '/ai-mentor',
+        estimatedMinutes: 5,
+        secondaryActions: [
+          { title: 'Practice in Lab', route: concept?.practicalExercise?.labRoute || '/network-lab' }
+        ],
+        conceptId: pendingMistake.conceptId
+      };
+    }
+
+    // 2. Check current active topic state
+    const activeConceptId = profile.activeTopicId || 'c0_cpu_ram';
+    const activeConcept = this.getConcept(activeConceptId);
+    const currentSkillState = this.getLearnerSkill(profile, activeConceptId);
+
+    if (activeConcept) {
+      // 2a. If prerequisites are not met, prompt learner to master the prerequisite first
+      const prereqCheck = this.checkPrerequisitesMet(activeConceptId, profile);
+      if (!prereqCheck.met && prereqCheck.missing.length > 0) {
+        const missingConcept = this.getConcept(prereqCheck.missing[0]);
+        return {
+          actionType: 'CONTINUE_LESSON',
+          title: `Build Prerequisite: ${missingConcept?.title || prereqCheck.missing[0]}`,
+          reason: `Before diving deep into ${activeConcept.title}, you need to master prerequisite ${missingConcept?.title || prereqCheck.missing[0]}.`,
+          route: '/ai-mentor',
+          estimatedMinutes: 10,
+          secondaryActions: [
+            { title: 'View Full Roadmap', route: '/career-paths' }
+          ],
+          conceptId: prereqCheck.missing[0]
+        };
+      }
+
+      // 2b. If learner is in LEARNING and hasn't done practical lab
+      if (currentSkillState && currentSkillState.level === 'LEARNING' && currentSkillState.practicalAttempts === 0) {
+        return {
+          actionType: 'PRACTICE_LAB',
+          title: `Hands-on Practice: ${activeConcept.title}`,
+          reason: `You have completed initial theory for ${activeConcept.title}. Applying this in the authorized lab environment will build muscle memory.`,
+          route: activeConcept.practicalExercise?.labRoute || '/network-lab',
+          estimatedMinutes: 15,
+          secondaryActions: [
+            { title: 'Take Concept Quiz', route: '/ai-mentor' }
+          ],
+          conceptId: activeConcept.id
+        };
+      }
+
+      // 2c. If learner is in PRACTICING and needs quiz validation
+      if (currentSkillState && currentSkillState.level === 'PRACTICING' && currentSkillState.quizScoreAvg < 80) {
+        return {
+          actionType: 'TAKE_QUIZ',
+          title: `Assess Understanding: ${activeConcept.title}`,
+          reason: `Validating your knowledge with the concept assessment will qualify you for Competent mastery.`,
+          route: '/ai-mentor',
+          estimatedMinutes: 8,
+          secondaryActions: [
+            { title: 'Review in Lab', route: activeConcept.practicalExercise?.labRoute || '/network-lab' }
+          ],
+          conceptId: activeConcept.id
+        };
+      }
+
+      // 2d. If current concept is MASTERED, advance to next concept in graph
+      if (currentSkillState && (currentSkillState.level === 'COMPETENT' || currentSkillState.level === 'MASTERED')) {
+        if (activeConcept.nextConcepts && activeConcept.nextConcepts.length > 0) {
+          const nextConcept = this.getConcept(activeConcept.nextConcepts[0]);
+          if (nextConcept) {
+            return {
+              actionType: 'CONTINUE_LESSON',
+              title: `Next Concept: ${nextConcept.title}`,
+              reason: `You have proven competence in ${activeConcept.title}. Ready to advance to Level ${nextConcept.level}: ${nextConcept.title}.`,
+              route: '/ai-mentor',
+              estimatedMinutes: 12,
+              secondaryActions: [
+                { title: 'Practice in Lab', route: nextConcept.practicalExercise?.labRoute || '/network-lab' },
+                { title: 'Explore Roadmap', route: '/career-paths' }
+              ],
+              conceptId: nextConcept.id
+            };
+          }
+        }
+      }
+
+      // 2e. If concept is active and has no skill state recorded yet, start the initial lesson
+      if (!currentSkillState) {
+        return {
+          actionType: 'CONTINUE_LESSON',
+          title: `Start Concept: ${activeConcept.title}`,
+          reason: `Begin Level ${activeConcept.level} foundational concepts for ${activeConcept.title}.`,
+          route: '/ai-mentor',
+          estimatedMinutes: 10,
+          secondaryActions: [
+            { title: 'Practice in Lab', route: activeConcept.practicalExercise?.labRoute || '/network-lab' },
+            { title: 'Explore Roadmap', route: '/career-paths' }
+          ],
+          conceptId: activeConcept.id
+        };
+      }
+    }
+
+    // 3. Fallback to Target Career Track Guidance
+    const targetCareer = profile.targetCareer || 'SOC_ANALYST';
+    const careerConfig = this.CAREER_MAPPINGS[targetCareer] || this.CAREER_MAPPINGS['SOC_ANALYST'];
+
+    // Find the first required skill in the career path that is not yet COMPETENT/MASTERED
+    for (const reqSkillId of careerConfig.required) {
+      const state = this.getLearnerSkill(profile, reqSkillId);
+      if (!state || (state.level !== 'COMPETENT' && state.level !== 'MASTERED')) {
+        // Check prerequisites for this required skill
+        const prereqCheck = this.checkPrerequisitesMet(reqSkillId, profile);
+        const targetId = prereqCheck.met ? reqSkillId : prereqCheck.missing[0];
+        const targetConcept = this.getConcept(targetId) || this.getConcept('c0_cpu_ram')!;
+        
+        return {
+          actionType: 'CONTINUE_LESSON',
+          title: `Career Milestone: ${targetConcept.title}`,
+          reason: `Progress toward your ${careerConfig.title} goal by mastering ${targetConcept.title}.`,
+          route: '/ai-mentor',
+          estimatedMinutes: 10,
+          secondaryActions: [
+            { title: 'Practice in Lab', route: targetConcept.practicalExercise?.labRoute || '/network-lab' },
+            { title: 'Explore Career Track', route: '/career-paths' }
+          ],
+          conceptId: targetConcept.id
+        };
+      }
+    }
+
+    return {
+      actionType: 'CONTINUE_LESSON',
+      title: 'Digital & Computer Foundations',
+      reason: 'Continue building core cybersecurity knowledge from first principles.',
+      route: '/ai-mentor',
+      estimatedMinutes: 10,
+      secondaryActions: [
+        { title: 'Cyber Career Paths', route: '/career-paths' }
+      ],
+      conceptId: 'c0_cpu_ram'
+    };
+  }
+
+  /**
+   * Analyzes skill gaps for target career roles using the 19-level graph.
+   */
+  public static generateCareerGapReport(profile: LearnerProfile): CareerGapReport {
+    const career = profile.targetCareer;
+    const targetConfig = this.CAREER_MAPPINGS[career] || this.CAREER_MAPPINGS['PENETRATION_TESTER'];
+    const ready: string[] = [];
+    const nearReady: string[] = [];
+    const criticalGaps: string[] = [];
+
+    for (const reqId of targetConfig.required) {
+      const concept = this.getConcept(reqId);
+      const state = this.getLearnerSkill(profile, reqId);
+      const label = concept ? concept.title : reqId;
+
+      if (state && (state.level === 'COMPETENT' || state.level === 'MASTERED')) {
+        ready.push(label);
+      } else if (state && state.level === 'PRACTICING') {
+        nearReady.push(label);
+      } else {
+        criticalGaps.push(label);
+      }
+    }
+
+    const total = targetConfig.required.length;
+    const readinessPercentage = Math.round(((ready.length * 1.0 + nearReady.length * 0.5) / (total || 1)) * 100);
+
+    return {
+      careerTitle: targetConfig.title,
+      totalRequiredSkills: total,
+      readinessPercentage,
+      readySkills: ready,
+      nearReadySkills: nearReady,
+      criticalGaps,
+      recommendedProject: targetConfig.project
+    };
+  }
+
+  /**
+   * Helper to evaluate mastery progression for a concept by ID.
+   */
+  public static evaluateMasteryProgress(
+    conceptId: string,
+    currentState?: LearnerSkillState,
+    practicalAttempts?: number,
+    quizScore?: number,
+    hintLevelUsed?: number
+  ): LearnerSkillState {
+    const base: LearnerSkillState = currentState || {
+      skillId: conceptId,
+      level: 'UNKNOWN',
+      quizScoreAvg: 0,
+      practicalAttempts: 0,
+      lastPracticed: new Date().toISOString(),
+      identifiedMistakes: []
+    };
+
+    if (practicalAttempts !== undefined) {
+      base.practicalAttempts = practicalAttempts;
+    }
+
+    return this.evaluateSkillMastery(base, quizScore, false, hintLevelUsed);
+  }
+
+  /**
+   * Evaluates evidence to update mastery level without artificial inflation.
    */
   public static evaluateSkillMastery(
     currentState: LearnerSkillState,
     newQuizScore?: number,
-    practicalCompleted?: boolean
+    practicalCompleted?: boolean,
+    hintLevelUsed?: number
   ): LearnerSkillState {
     const updated = { ...currentState };
 
     if (practicalCompleted) {
-      updated.practicalAttempts += 1;
+      updated.practicalAttempts = (updated.practicalAttempts || 0) + 1;
     }
 
     if (typeof newQuizScore === 'number') {
-      updated.quizScoreAvg = Math.round((updated.quizScoreAvg + newQuizScore) / 2);
+      if (typeof updated.quizScoreAvg === 'number' && updated.quizScoreAvg > 0) {
+        updated.quizScoreAvg = Math.round((updated.quizScoreAvg + newQuizScore) / 2);
+      } else {
+        updated.quizScoreAvg = newQuizScore;
+      }
     }
 
-    // Evidence progression rules:
+    if (typeof hintLevelUsed === 'number') {
+      updated.highestHintUsed = Math.max(updated.highestHintUsed || 0, hintLevelUsed);
+    }
+
+    // Evidence-based Progression Thresholds:
     // 1. UNKNOWN -> INTRODUCED (Concept viewed)
     // 2. INTRODUCED -> LEARNING (Deep dive started)
-    // 3. LEARNING -> PRACTICING (At least 1 practical attempt in lab)
-    // 4. PRACTICING -> COMPETENT (>= 2 practical attempts + Quiz Score >= 80)
-    // 5. COMPETENT -> MASTERED (>= 3 practical attempts + Quiz Score >= 90 + zero active misconceptions)
+    // 3. LEARNING -> PRACTICING (At least 1 practical lab execution)
+    // 4. PRACTICING -> COMPETENT (>= 2 practical attempts + Quiz Score >= 80 + hintLevel <= 2)
+    // 5. COMPETENT -> MASTERED (>= 3 practical attempts + Quiz Score >= 90 + zero active mistakes + hintLevel <= 1)
 
-    if (updated.level === 'UNKNOWN') {
-      updated.level = 'INTRODUCED';
-    } else if (updated.level === 'INTRODUCED') {
+    if (updated.level === 'UNKNOWN' || updated.level === 'INTRODUCED') {
       updated.level = 'LEARNING';
-    } else if (updated.level === 'LEARNING' && updated.practicalAttempts >= 1) {
+    }
+    
+    if (updated.level === 'LEARNING' && updated.practicalAttempts >= 1) {
       updated.level = 'PRACTICING';
-    } else if (
-      updated.level === 'PRACTICING' &&
+    }
+    
+    if (
+      (updated.level === 'PRACTICING' || updated.level === 'LEARNING') &&
       updated.practicalAttempts >= 2 &&
-      updated.quizScoreAvg >= 80
+      updated.quizScoreAvg >= 80 &&
+      (updated.highestHintUsed ?? 0) <= 2
     ) {
       updated.level = 'COMPETENT';
-    } else if (
+    }
+    
+    if (
       updated.level === 'COMPETENT' &&
       updated.practicalAttempts >= 3 &&
       updated.quizScoreAvg >= 90 &&
-      updated.identifiedMistakes.length === 0
+      (!updated.identifiedMistakes || updated.identifiedMistakes.length === 0) &&
+      (updated.highestHintUsed ?? 0) <= 1
     ) {
       updated.level = 'MASTERED';
     }

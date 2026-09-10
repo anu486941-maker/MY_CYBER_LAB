@@ -36,6 +36,8 @@ export type CareerRoleId =
   | 'security-researcher'
   | 'ctf-competitor';
 
+export type MembershipTier = 'FREE' | 'PRO' | 'ENTERPRISE';
+
 export interface UserProfile {
   name: string;
   codename: string;
@@ -67,6 +69,14 @@ export interface UserProfile {
   onboardingCompleted: boolean;
   theme: 'dark' | 'midnight' | 'cyber';
   accentColor: 'cyan' | 'emerald' | 'violet' | 'amber';
+  membershipTier?: MembershipTier;
+  whopLicenseKey?: string;
+  whopSubscriptionStatus?: 'active' | 'trialing' | 'expired' | 'none';
+  whopValidUntil?: string;
+  whopPlanName?: string;
+  calibratedLevel?: 'Beginner' | 'Foundation' | 'Intermediate' | 'Advanced';
+  lastCheckpointPassed?: string;
+  checkpointScores?: Record<string, number>;
 }
 
 export interface SkillProgress {

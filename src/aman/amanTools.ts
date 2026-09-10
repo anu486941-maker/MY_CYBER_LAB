@@ -10,6 +10,8 @@ export type ToolCategory =
   | 'STUDY'
   | 'MISSIONS'
   | 'LAB'
+  | 'CYBER_RANGE'
+  | 'CHECKPOINT'
   | 'EVIDENCE'
   | 'CAREER'
   | 'ACCOUNT';

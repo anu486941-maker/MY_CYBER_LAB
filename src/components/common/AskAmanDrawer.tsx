@@ -15,6 +15,9 @@ import { generateLocalGuidanceResponse } from '../../utils/amanLocalGuidance';
 import { runAmanDiagnostic } from '../../utils/amanChatDiagnostic';
 import { AmanVoiceSettingsModal } from './AmanVoiceSettingsModal';
 import { AmanAudioWaveform } from './AmanAudioWaveform';
+import { amanRuntime } from '../../aman/amanRuntime';
+import { AmanPlanner } from '../../aman/amanPlanner';
+import { amanEventBus } from '../../aman/amanEvents';
 import { 
   Bot, 
   Send, 
@@ -81,6 +84,17 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [runtimeAgentState, setRuntimeAgentState] = useState<string>('IDLE');
+  const [runtimeLabState, setRuntimeLabState] = useState<string>('STANDBY');
+
+  useEffect(() => {
+    const unsub = amanRuntime.onStateChange((aState, lState) => {
+      setRuntimeAgentState(aState);
+      setRuntimeLabState(lState);
+    });
+    return unsub;
+  }, []);
+
   const [amanStatus, setAmanStatus] = useState<'CONNECTED' | 'SWITCHING' | 'LOCAL_GUIDANCE'>('CONNECTED');
   const [healthStatus, setHealthStatus] = useState<'ONLINE' | 'FALLBACK' | 'OFFLINE'>('ONLINE');
   const [showDiagnosticDetails, setShowDiagnosticDetails] = useState(false);
@@ -386,32 +400,13 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
     let localResponseText = '';
     let localActions: AmanAction[] = [];
 
-    if (query === 'hi' || query === 'hi aman' || query === 'hello' || query === 'hello aman' || query === 'namaste' || query === 'namaste aman') {
-      const activeRole = CAREER_ROLES_DATA.find(r => r.id === profile.targetRole)?.title || 'Ethical Hacker';
-      localResponseText = `Namaste Operator ${profile.name}! I am AMAN, your Socratic Learning Orchestrator. You are currently on the **${activeRole}** path at Level ${profile.cyberLevel} (${profile.rank}). How can I guide your hands-on laboratory practice today?`;
-      localActions = [{ type: 'OPEN_DASHBOARD', targetRoute: '/dashboard', label: '📊 Open Dashboard' }];
-    }
-    else if (query === 'what can you do' || query === 'what can you do?' || query === 'help' || query === 'kya kar sakte ho') {
+    if (query === 'what can you do' || query === 'what can you do?' || query === 'help' || query === 'kya kar sakte ho') {
       localResponseText = `As the central learning orchestrator of My Cyber Lab, I can:\n\n1. 🎓 **Guide Career Paths**: Say *"I want to become an ethical hacker"* or *"Switch to SOC"*\n2. 🔄 **Resume Curriculum**: Say *"Continue my course"* or *"What's next?"*\n3. 🖥️ **Command Coaching**: Say *"Explain nmap"* or try standard tools in the terminal\n4. 🎯 **Deploy Missions**: Say *"Give me a mission"* or *"Give me a harder mission"*\n5. 📁 **Analyze Real Cases**: Say *"Give me a real case"*\n6. 🗣️ **Interview Practice**: Say *"Interview me"*\n7. 🗣️ **Hinglish Mode**: Say *"Teach me in Hinglish"* or *"Main kaha tak pahucha?"*`;
       localActions = [
         { type: 'OPEN_LEARNING_PATH', targetRoute: '/learning-path', label: '🎓 View Learning Path' },
         { type: 'OPEN_ROADMAP', targetRoute: '/roadmap', label: '🗺️ View Career Roadmap' }
       ];
     }
-    else if (query === 'continue' || query === 'continue learning' || query === 'continue my course' || query === 'continue karo' || query === 'aage badho' || query === 'resume') {
-      const nextAct = nextMove || { title: 'Foundations Hands-On Lab', activityId: 'module-01-intro-cyber', actionType: 'LAB' };
-      localResponseText = `Done. I've switched you to your saved learning position and opened **${nextAct.title}**. Let's keep making progress!`;
-      localActions = [{
-        type: 'RESUME_LEARNING',
-        targetRoute: nextAct.actionType === 'LAB' ? `/modules/${nextAct.activityId}` : '/learning-path',
-        label: `🔄 Resume: ${nextAct.title}`
-      }];
-      if (nextAct.actionType === 'LAB') {
-        navigate(`/modules/${nextAct.activityId}`);
-      } else {
-        navigate('/learning-path');
-      }
-    } 
     else if (query === 'where am i' || query === 'where am i?' || query === 'main kaha hoon' || query === 'kaha tak pahucha' || query === 'kahan hoon' || query === 'kahan tak pahucha' || query === 'main kaha tak pahucha?' || query === 'main kaha tak pahucha' || query === 'main kahan tak pahucha') {
       const roleName = CAREER_ROLES_DATA.find(r => r.id === profile.targetRole)?.title || 'Ethical Hacker';
       localResponseText = `You are currently on the **${roleName}** track.\n\n- **Current Level**: Level ${profile.cyberLevel} (${profile.rank})\n- **Total XP**: ${profile.xp} XP\n- **Overall Mastery**: ${position.overallMasteryPercentage}%\n- **Active Milestone**: ${position.nextRequiredSkill || 'Network Fundamentals'}`;
@@ -446,13 +441,12 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
       navigate('/linux-lab');
     }
     else if (
-      query.includes('ethical hacking') || 
-      query.includes('ethical hacker') || 
-      query.includes('pentester') || 
-      query.includes('penetration testing') || 
-      query.includes('hacking seekhni') || 
-      query.includes('hacking seekhna') || 
-      query.includes('ethical hacker banna')
+      query === 'ethical hacking' || 
+      query === 'ethical hacker' || 
+      query === 'pentester' || 
+      query === 'penetration testing' || 
+      query.includes('switch to ethical hacker') || 
+      query.includes('switch to pentester')
     ) {
       updateProfile({ targetRole: 'ethical-hacker' });
       localResponseText = "Done. I have switched your active career path to **Ethical Hacker**. Your previous progress has been preserved.";
@@ -460,9 +454,10 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
       navigate('/learning-path');
     }
     else if (
-      query.includes('soc') || 
-      query.includes('blue team') || 
-      query.includes('soc analyst')
+      query === 'soc' || 
+      query === 'blue team' || 
+      query === 'soc analyst' ||
+      query.includes('switch to soc')
     ) {
       updateProfile({ targetRole: 'soc-analyst' });
       localResponseText = "Done. I have switched your active career path to **SOC Analyst**. Your previous progress has been preserved.";
@@ -470,15 +465,16 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
       navigate('/learning-path');
     }
     else if (
-      query.includes('cloud security') || 
-      query.includes('cloud-security')
+      query === 'cloud security' || 
+      query === 'cloud-security' ||
+      query.includes('switch to cloud security')
     ) {
       updateProfile({ targetRole: 'cloud-security' });
       localResponseText = "Done. I have switched your active career path to **Cloud Security Specialist**. Your previous progress has been preserved.";
       localActions = [{ type: 'OPEN_LEARNING_PATH', targetRoute: '/learning-path', label: '🎓 Open Cloud Security Path', parameter: 'cloud-security' }];
       navigate('/learning-path');
     }
-    else if (query === 'teach me networking' || query === 'networking' || query.includes('networking')) {
+    else if (query === 'open networking module' || query === 'open networking') {
       localResponseText = "Loading the **Networking Fundamentals** module index. Networking is the bedrock of cybersecurity. Let's study IP addresses, subnets, and TCP handshake concepts!";
       localActions = [{ type: 'OPEN_LEARNING_PATH', targetRoute: '/learning-path', label: '🎓 Open Networking Module' }];
       navigate('/learning-path');
@@ -494,6 +490,49 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
         localResponseText = `### Command Anatomy: Nmap\n\n\`nmap 10.50.0.15\`\n\n- **nmap**: Port scanning binary (Program).\n- **10.50.0.15**: Destination server (Target).\n\nThis will perform a default SYN stealth scan on the target. Let's open the Linux Lab to test it!`;
       }
       localActions = [{ type: 'OPEN_LAB', targetRoute: '/linux-lab', label: '🖥️ Launch Linux Terminal' }];
+    }
+    else if (
+      query.includes('unsolved web-security query') ||
+      query.includes('unsolved web security query') ||
+      query.includes('unsolved web security') ||
+      query.includes('unsolved query') ||
+      query.includes('unsolved challenge') ||
+      query.includes('unsolved mission') ||
+      query.includes('i want to work on an unsolved') ||
+      query === 'unsolved'
+    ) {
+      localResponseText = `### 🎯 ACTIVE UNSOLVED CHALLENGE IDENTIFIED\n\n- **Mission**: **SOC-001: Investigate a Suspicious Login**\n- **Target Machine**: \`WebForge Alpha (10.20.0.10)\`\n- **Assigned AttackBox**: \`10.20.0.50\`\n- **Authorized Scope**: \`10.20.0.0/24\` (Controlled Cybersecurity Training Sandbox)\n- **Difficulty**: Beginner / Intermediate\n\n**Mission Briefing**:\nAnalyze unauthorized authentication spikes on SSH port 22. Identify the rogue external IP \`198.51.100.44\` and extract the compromised account token (\`FLAG{...}\`). Submit into the Flag Checkpoint for authoritative verification.\n\nOpening your **Flag Checkpoint** now!`;
+      localActions = [
+        { type: 'OPEN_DASHBOARD', targetRoute: '/flag-checkpoint', label: '🛡️ Open Flag Checkpoint' },
+        { type: 'OPEN_LAB', targetRoute: '/flag-checkpoint', label: '🚀 Start Lab Sandbox' }
+      ];
+      navigate('/flag-checkpoint');
+    }
+    else if (
+      query.includes('prepare my authorized lab environment') ||
+      query.includes('prepare authorized lab') ||
+      query.includes('prepare lab environment') ||
+      query.includes('start machine') ||
+      query.includes('launch machine') ||
+      query.includes('prepare my lab')
+    ) {
+      localResponseText = `### 🚀 AUTHORIZED LAB ENVIRONMENT ONLINE\n\n- **Target Machine**: \`WebForge Alpha (10.20.0.10)\`\n- **Assigned AttackBox**: \`10.20.0.50\`\n- **Subnet Scope**: \`10.20.0.0/24\` (Strict Sandbox Isolation)\n- **Classification**: Controlled Cybersecurity Training Sandbox\n- **Uptime Lease**: 60 minutes\n\nSandbox is active. Routing to your **Flag Checkpoint** to triage logs and capture verification tokens.`;
+      localActions = [
+        { type: 'OPEN_DASHBOARD', targetRoute: '/flag-checkpoint', label: '🛡️ Go to Flag Checkpoint' }
+      ];
+      navigate('/flag-checkpoint');
+    }
+    else if (
+      query.includes('verify flag') ||
+      query.includes('verify checkpoint') ||
+      query.includes('check flag') ||
+      query.includes('verify my work')
+    ) {
+      localResponseText = `### 🛡️ FLAG CHECKPOINT VERIFICATION\n\nOur authoritative verification engine (\`/api/mission/checkpoint-verify\`) evaluates your captured flag token, scores your submission (deducting 10% per hint used), stores tamper-proof proof in your **Evidence Locker**, and unlocks **SOC-002: Detect Brute Force Activity**.\n\nNavigate to the **Flag Checkpoint** to test your token!`;
+      localActions = [
+        { type: 'OPEN_DASHBOARD', targetRoute: '/flag-checkpoint', label: '🛡️ Open Flag Checkpoint' }
+      ];
+      navigate('/flag-checkpoint');
     }
     else if (query === 'give me a mission' || query === 'challenge do' || query === 'mission do' || query === 'mission' || query === "give me my mission" || query === "give me today's mission" || query === "give me today's mission?") {
       const activeMission = missions.find(m => !m.completed) || missions[0];
@@ -574,7 +613,24 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
     if (!messageParts) setInputVal('');
     setIsTyping(true);
 
-    // Fast local deterministic commands check
+    // 1. Explicit Interruption / Stop Check
+    if (/^(aman,?\s*stop|stop|cancel|abort)$/i.test(text.trim())) {
+      amanRuntime.interrupt();
+      handleStopSpeaking();
+      setIsTyping(false);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: `aman-stop-${Date.now()}`,
+          sender: 'aman',
+          text: 'Execution stopped. Returning to standby.',
+          timestamp: new Date()
+        }
+      ]);
+      return;
+    }
+
+    // 2. Fast local deterministic commands check
     try {
       const wasResolved = await tryResolveLocalCommand(text);
       if (wasResolved) {
@@ -582,6 +638,45 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
       }
     } catch (localErr) {
       console.warn('Local command resolution failed, falling back to network:', localErr);
+    }
+
+    // 3. Autonomous AMAN Runtime v3 Execution & Multi-Step Planner
+    try {
+      const runtimeCtx: any = {
+        navigate,
+        currentRoute: location.pathname,
+        profile,
+        learningState,
+        evidenceLocker: (profile as any).evidenceLocker || [],
+        addEvidence: (window as any).__mcl_addEvidence,
+        addXp: (window as any).__mcl_addXp,
+        completeMission: (window as any).__mcl_completeMission
+      };
+
+      const isCasual = AmanPlanner.isCasualConversation(text);
+      const plan = AmanPlanner.createPlan(text, runtimeCtx);
+
+      if (isCasual || plan.steps.length > 0 || /^(what am i learning|explain|thik chal|how are you|kya haal|hello|hi|hey|mujhe networking|what is|help)/i.test(text.trim())) {
+        const runtimeRes = await amanRuntime.handleUserMessage(text, runtimeCtx);
+        if (runtimeRes && runtimeRes.text) {
+          setIsTyping(false);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `aman-${Date.now()}`,
+              sender: 'aman',
+              text: runtimeRes.text,
+              timestamp: new Date()
+            }
+          ]);
+          if (!isMuted) {
+            handleSpeak(runtimeRes.text);
+          }
+          return;
+        }
+      }
+    } catch (rErr) {
+      console.warn('AMAN Runtime execution error, falling back:', rErr);
     }
 
     const activeContext = {
@@ -1106,17 +1201,18 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-white">AMAN INSTRUCTOR</span>
+                  <span className="text-xs font-mono font-bold text-white">AMAN AGENT</span>
                   <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-slate-950 border border-slate-800 text-[9px] font-mono">
                     <span className={`w-1.5 h-1.5 rounded-full ${
-                      amanStatus === 'CONNECTED' ? 'bg-emerald-400 animate-pulse' :
-                      amanStatus === 'SWITCHING' ? 'bg-amber-400 animate-ping' :
-                      'bg-purple-400'
+                      runtimeAgentState === 'EXECUTING' ? 'bg-amber-400 animate-ping' :
+                      runtimeAgentState === 'PLANNING' || runtimeAgentState === 'UNDERSTANDING' ? 'bg-cyan-400 animate-pulse' :
+                      runtimeAgentState === 'VERIFYING' ? 'bg-emerald-400 animate-bounce' :
+                      runtimeAgentState === 'AWAITING_PERMISSION' ? 'bg-rose-400 animate-pulse' :
+                      healthStatus === 'OFFLINE' ? 'bg-rose-500' :
+                      'bg-emerald-400'
                     }`} />
                     <span className="text-slate-300 font-medium">
-                      {amanStatus === 'CONNECTED' ? 'AMAN AI' :
-                       amanStatus === 'SWITCHING' ? 'Switching AI' :
-                       'Local Guidance'}
+                      {healthStatus === 'OFFLINE' ? 'AMAN OFFLINE' : `AMAN ${runtimeAgentState}`}
                     </span>
                   </div>
                   <button
@@ -1386,6 +1482,24 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
             {/* Quick Prompt Chips */}
             <div className="px-3 py-2 bg-slate-950/60 border-t border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
               <button
+                onClick={() => handleSend("I want to work on an unsolved web-security query")}
+                className="px-2.5 py-1 rounded-full bg-cyan-950/50 border border-cyan-500/50 text-[10px] font-mono text-cyan-300 hover:text-cyan-200 hover:bg-cyan-900/60 shrink-0 transition-colors font-bold shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+              >
+                🎯 Unsolved Query
+              </button>
+              <button
+                onClick={() => handleSend("Prepare my authorized lab environment")}
+                className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 hover:text-emerald-300 hover:border-emerald-500/40 shrink-0 transition-colors"
+              >
+                🚀 Start Machine
+              </button>
+              <button
+                onClick={() => handleSend("Verify my checkpoint flag")}
+                className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 shrink-0 transition-colors"
+              >
+                🛡️ Flag Checkpoint
+              </button>
+              <button
                 onClick={() => handleSend("Main abhi kaha hoon?")}
                 className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 shrink-0 transition-colors"
               >
@@ -1396,12 +1510,6 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
                 className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 shrink-0 transition-colors"
               >
                 🎯 What next?
-              </button>
-              <button
-                onClick={() => handleSend("Hinglish mein explain karo.")}
-                className="px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-[10px] font-mono text-slate-300 hover:text-cyan-300 hover:border-cyan-500/40 shrink-0 transition-colors"
-              >
-                🇮🇳 Hinglish explain
               </button>
               <button
                 onClick={() => handleSend("Give me a hint for my current task.")}

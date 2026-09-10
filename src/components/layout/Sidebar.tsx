@@ -33,6 +33,7 @@ import {
   Layers,
   ChevronRight,
   Sparkles,
+  Crown,
   ShoppingBag,
   GraduationCap,
   FileText,
@@ -66,6 +67,7 @@ const PRIMARY_NAV_ITEMS: NavItem[] = [
   { name: 'Roadmap', path: '/roadmap', icon: Compass, badge: 'CAREER', badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40' },
   { name: 'AMAN AI', path: '/ai-mentor', icon: Bot, badge: 'MENTOR', badgeColor: 'bg-purple-950 text-purple-300 border-purple-500/40' },
   { name: 'Progress', path: '/learning-path', icon: GitBranch, badge: 'LEVELS', badgeColor: 'bg-amber-950 text-amber-300 border-amber-500/40' },
+  { name: 'Whop Passes', path: '/pricing', icon: Crown, badge: 'PRO PASS', badgeColor: 'bg-gradient-to-r from-amber-950 to-cyan-950 text-amber-300 border-amber-500/40' },
 ];
 
 const SECONDARY_NAV_ITEMS: { category: string; items: NavItem[] }[] = [

@@ -5,6 +5,7 @@
  */
 
 import { AmanExecutionContext, ToolCallInvocation, AgentStep } from './amanTools';
+import { AmanToolRegistry } from './amanToolRegistry';
 import { CompactLearnerContext } from './amanContext';
 import { AmanActionExecutor } from './amanActionExecutor';
 import { AmanPlatformIndex } from './amanPlatformIndex';
@@ -461,6 +462,107 @@ export class AmanTurboRouter {
         executionPath: 'TURBO_FAST_PATH',
         intentCategory: 'PREREQUISITE_TUTORING',
         text: `🎓 **Prerequisite Knowledge Checklist**:\n\n1. **HTTP Request Structure**: GET/POST headers and status codes (200, 403, 500).\n2. **SQL Syntax**: \`UNION SELECT\`, comments (\`--\`), and schema reflection.\n3. **SUID Privileges**: Binary permissions (\`chmod u+s\`) and root UID \`0\`.`
+      };
+    }
+
+    // =========================================================================
+    // CYBER RANGE & MISSION CHECKPOINT AGENT ROUTING
+    // =========================================================================
+    if (
+      lower.includes('unsolved web-security query') ||
+      lower.includes('unsolved web security query') ||
+      lower.includes('unsolved web security') ||
+      lower.includes('unsolved query') ||
+      lower.includes('unsolved challenge') ||
+      lower.includes('unsolved mission') ||
+      lower.includes('i want to work on an unsolved') ||
+      lower === 'unsolved' ||
+      lower === 'find unsolved challenge' ||
+      lower === 'next unsolved mission'
+    ) {
+      const unsolvedTool = AmanToolRegistry.getTool('find_unsolved_challenge');
+      const unsolvedData = unsolvedTool 
+        ? await unsolvedTool.execute({ category: 'web-security' }, context)
+        : {
+            id: 'SOC-001',
+            title: 'SOC-001: Investigate a Suspicious Login',
+            targetMachine: 'WebForge Alpha (10.20.0.10)',
+            attackBoxIp: '10.20.0.50',
+            authorizedScope: '10.20.0.0/24',
+            targetRoute: '/flag-checkpoint'
+          };
+
+      if (context.navigate) {
+        context.navigate(unsolvedData.targetRoute || '/flag-checkpoint');
+      }
+
+      const workflowSteps: AgentStep[] = [
+        { stepNumber: 1, description: `Scanned curriculum for unsolved challenges in Web & Authentication Security`, status: 'COMPLETED' },
+        { stepNumber: 2, description: `Identified active target: ${unsolvedData.title} (${unsolvedData.id})`, status: 'COMPLETED' },
+        { stepNumber: 3, description: `Prepared authorized lab environment on subnet ${unsolvedData.authorizedScope}`, status: 'COMPLETED' },
+        { stepNumber: 4, description: `Opened Flag Checkpoint verification workspace at ${unsolvedData.targetRoute}`, status: 'COMPLETED' }
+      ];
+
+      return {
+        handledLocally: true,
+        executionPath: 'TURBO_FAST_PATH',
+        intentCategory: 'CYBER_RANGE_ORCHESTRATION',
+        targetRoute: unsolvedData.targetRoute || '/flag-checkpoint',
+        workflowSteps,
+        text: `🎯 **Target Acquired & Environment Prepared**:\n\nI have identified your active unsolved challenge: **${unsolvedData.title}**!\n\n- **Target Machine**: \`${unsolvedData.targetMachine || 'WebForge Alpha (10.20.0.10)'}\`\n- **Assigned AttackBox**: \`${unsolvedData.attackBoxIp || '10.20.0.50'}\`\n- **Engagement Scope**: \`${unsolvedData.authorizedScope || '10.20.0.0/24'}\` (Strict Sandbox Isolation)\n- **Environment**: Controlled Cybersecurity Training Sandbox\n\n**Operational Workflow**:\n1. Triage authentication log anomalies on port 22/80.\n2. Isolate unauthorized external IP (\`198.51.100.44\`) and capture the flag signature.\n3. Submit the token into the **Flag Checkpoint** for authoritative verification and scoring.\n\nOpening your **Flag Checkpoint** workspace now!`
+      };
+    }
+
+    if (
+      lower.includes('prepare my authorized lab environment') ||
+      lower.includes('prepare authorized lab') ||
+      lower.includes('prepare lab environment') ||
+      lower.includes('start machine') ||
+      lower.includes('launch machine') ||
+      lower.includes('prepare my lab') ||
+      lower.includes('start lab machine') ||
+      lower.includes('start the machine') ||
+      lower.includes('provision machine')
+    ) {
+      const startTool = AmanToolRegistry.getTool('start_cyber_machine');
+      const startResult = startTool
+        ? await startTool.execute({ missionId: 'SOC-001' }, context)
+        : null;
+
+      const attackBox = startResult?.attackBox?.attackBoxIp || '10.20.0.50';
+      const subnet = startResult?.attackBox?.assignedSubnet || '10.20.0.0/24';
+
+      if (context.navigate) {
+        context.navigate('/flag-checkpoint');
+      }
+
+      return {
+        handledLocally: true,
+        executionPath: 'TURBO_FAST_PATH',
+        intentCategory: 'CYBER_RANGE_ORCHESTRATION',
+        targetRoute: '/flag-checkpoint',
+        text: `🚀 **Authorized Lab Environment Online**:\n\n- **Target Machine**: \`WebForge Alpha (10.20.0.10)\`\n- **Assigned AttackBox**: \`${attackBox}\`\n- **Authorized Scope**: \`${subnet}\`\n- **Classification**: Controlled Cybersecurity Training Sandbox\n- **Session State**: \`ACTIVE\` (Lease: 60 minutes)\n\nYour sandbox container is ready. Navigating to the **Flag Checkpoint** to triage logs, inspect anomalies, and submit verification tokens.`
+      };
+    }
+
+    if (
+      (lower.includes('verify') && (lower.includes('flag') || lower.includes('checkpoint') || lower.includes('submission') || lower.includes('work'))) ||
+      lower.includes('check flag') ||
+      lower.includes('check my flag') ||
+      lower.includes('submit flag') ||
+      lower.includes('check my work') ||
+      lower.includes('flag checkpoint')
+    ) {
+      if (context.navigate) {
+        context.navigate('/flag-checkpoint');
+      }
+
+      return {
+        handledLocally: true,
+        executionPath: 'TURBO_FAST_PATH',
+        intentCategory: 'CHECKPOINT_VERIFICATION',
+        targetRoute: '/flag-checkpoint',
+        text: `🛡️ **Authoritative Flag Verification Workspace**:\n\nI have routed you to the **Flag Checkpoint** (/flag-checkpoint).\n\n- **Authoritative Server**: \`/api/mission/checkpoint-verify\`\n- **How It Works**: Submit your captured flag token. The server validates the cryptographic signature, calculates your score (applying a 10% deduction per Socratic hint revealed), archives tamper-evident evidence to your **Evidence Locker**, and unlocks the next mission tier (\`SOC-002: Detect Brute Force Activity\`).\n\nEnter your flag in the checkpoint form to verify your work!`
       };
     }
     if (

@@ -36,6 +36,8 @@ export const INITIAL_USER_PROFILE = {
   onboardingCompleted: true,
   theme: 'dark' as const,
   accentColor: 'cyan' as const,
+  membershipTier: 'FREE' as const,
+  whopSubscriptionStatus: 'none' as const,
 };
 
 export const SKILL_PROGRESS_DATA = [

@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   Zap,
-  Play
+  Play,
+  Crown,
+  Check
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
@@ -137,6 +139,14 @@ export const LandingPage: React.FC = () => {
           >
             <span>START LEARNING</span>
             <ArrowRight className="w-4 h-4 text-slate-950" />
+          </button>
+
+          <button
+            onClick={() => navigate('/pricing')}
+            className="w-full sm:w-auto py-4 px-7 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 to-slate-900 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+          >
+            <Crown className="w-4 h-4 text-amber-400" />
+            <span>WHOP PASSES ($29/mo)</span>
           </button>
 
           <button
@@ -266,6 +276,73 @@ export const LandingPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Whop Commercial Membership Showcase */}
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 space-y-8">
+        <div className="text-center space-y-2 max-w-2xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 font-mono text-xs font-semibold uppercase tracking-wider">
+            <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+            <span>COMMERCIAL WHOP MEMBERSHIP</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-mono font-bold text-white">
+            Starter vs. Pro Academy Passes
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-300 font-sans leading-relaxed">
+            Test-drive the basics for free, or unlock the full Cyber Range, all 30+ comprehensive modules, and 24/7 unrestricted AMAN AI mentorship through Whop.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Free Starter Card */}
+          <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <span className="text-xs font-mono text-slate-400 font-bold uppercase tracking-wider block">COMMUNITY ACCESS</span>
+              <h3 className="text-2xl font-mono font-bold text-white">Free Starter Pass</h3>
+              <div className="text-3xl font-mono font-black text-white">$0 <span className="text-xs font-mono text-slate-400">/ forever free</span></div>
+              <ul className="space-y-2 pt-2 text-xs text-slate-300 font-sans">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Security Foundations (Levels 1–3)</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Basic Sandboxed Linux Terminal</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> First 2 Beginner CTF Challenges</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> AMAN AI Socratic Hints (Standard)</li>
+              </ul>
+            </div>
+            <button
+              onClick={handleStartLearning}
+              className="w-full py-3.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-white font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Start Free Preview
+            </button>
+          </div>
+
+          {/* Whop Pro Academy Card */}
+          <div className="relative p-8 rounded-3xl bg-gradient-to-b from-slate-900 to-slate-950 border-2 border-cyan-500/60 flex flex-col justify-between space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+            <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-500 text-slate-950 font-mono text-[10px] font-black uppercase tracking-widest shadow-md">
+              WHOP OFFICIAL
+            </div>
+
+            <div className="space-y-4">
+              <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider block">ALL-INCLUSIVE PASS</span>
+              <h3 className="text-2xl font-mono font-bold text-white">Pro Academy Pass</h3>
+              <div className="text-3xl font-mono font-black text-white">$29 <span className="text-xs font-mono text-slate-400">/ month or $199 lifetime</span></div>
+              <ul className="space-y-2 pt-2 text-xs text-slate-300 font-sans">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400 shrink-0" /> <strong>All 30+ Deep Learning Modules</strong> & Career Tracks</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400 shrink-0" /> <strong>Cyber Range Machine Targets</strong> (WebForge, AD)</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400 shrink-0" /> <strong>Dual-Lens Telemetry</strong> & AI Wargame Arena</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400 shrink-0" /> <strong>Unrestricted AMAN AI Mentorship</strong> with Deep Dives</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-cyan-400 shrink-0" /> <strong>Verifiable SHA-256 Certificates</strong> & Portfolio Export</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => navigate('/pricing')}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 hover:opacity-90 text-slate-950 font-mono font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer"
+            >
+              <span>VIEW WHOP PRICING & DETAILS</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </section>
 
