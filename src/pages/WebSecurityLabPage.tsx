@@ -42,16 +42,16 @@ export const WebSecurityLabPage: React.FC = () => {
 
     if (sqliInput.includes("' OR '1'='1") || sqliInput.includes("' or '1'='1") || sqliInput.includes("' OR 1=1")) {
       const dump = [
-        { id: 1, username: 'admin', email: 'admin@mycyberlab.internal', role: 'SUPER_ADMIN', api_key: 'FLAG{SQLI_AUTH_BYPASS_UNION_EXTRACTED_9918}' },
-        { id: 2, username: 'dev_sarah', email: 'sarah@mycyberlab.internal', role: 'DEVELOPER', api_key: 'sk_live_8912781297' },
-        { id: 3, username: 'auditor_bob', email: 'bob@mycyberlab.internal', role: 'AUDITOR', api_key: 'sk_live_1102938120' }
+        { id: 1, username: 'admin', email: 'admin@cyberforge.internal', role: 'SUPER_ADMIN', api_key: 'FLAG{SQLI_AUTH_BYPASS_UNION_EXTRACTED_9918}' },
+        { id: 2, username: 'dev_sarah', email: 'sarah@cyberforge.internal', role: 'DEVELOPER', api_key: 'sk_live_8912781297' },
+        { id: 3, username: 'auditor_bob', email: 'bob@cyberforge.internal', role: 'AUDITOR', api_key: 'sk_live_1102938120' }
       ];
       setSqliResults(dump);
       setSqliExploited(true);
       addXp(150);
     } else if (sqliInput.toLowerCase() === 'admin') {
       setSqliResults([
-        { id: 1, username: 'admin', email: 'admin@mycyberlab.internal', role: 'SUPER_ADMIN', api_key: '******** [Hidden: Password Required]' }
+        { id: 1, username: 'admin', email: 'admin@cyberforge.internal', role: 'SUPER_ADMIN', api_key: '******** [Hidden: Password Required]' }
       ]);
       setSqliExploited(false);
     } else {
@@ -84,8 +84,8 @@ export const WebSecurityLabPage: React.FC = () => {
     } else if (idorUserId === 42) {
       setIdorUserData({
         id: 42,
-        fullName: 'Alex Mercer (You)',
-        email: 'alex.mercer@mycyberlab.internal',
+        fullName: 'Operator (You)',
+        email: 'operator@cyberforge.internal',
         role: 'Junior Security Trainee',
         salary: '$65,000 / yr'
       });

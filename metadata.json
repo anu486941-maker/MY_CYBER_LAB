@@ -1,6 +1,6 @@
 {
-  "name": "My Cyber Lab",
-  "description": "Premium Autonomous AI Cybersecurity Academy with AMAN Proactive Instructor, Hands-On Sandboxed Cyber Range, and Role-Based Pathways.",
+  "name": "CyberForge AI",
+  "description": "CyberForge AI is an AI-powered cybersecurity learning platform with hands-on labs, structured roadmaps and AMAN, your AI cybersecurity mentor.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

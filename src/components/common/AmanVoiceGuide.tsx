@@ -50,7 +50,7 @@ export const AmanVoiceGuide: React.FC = () => {
     // 1. If not authenticated
     if (!currentUser) {
       return {
-        voiceText: "Welcome to My Cyber Lab. Main aapka Senior Advisor AMAN hoon. Please login first to calibrate your secure learning shell.",
+        voiceText: "Welcome to CyberForge AI. Main aapka Senior Advisor AMAN hoon. Please login first to calibrate your secure learning shell.",
         subtitleText: "Please authenticate with Google Login to initialize your secure cybersecurity lab shell."
       };
     }
@@ -64,7 +64,7 @@ export const AmanVoiceGuide: React.FC = () => {
         case 0:
           return {
             voiceText: "Welcome cadet! Main AMAN hoon. Let's calibrate your cybersecurity profile. Choose a secure codename first.",
-            subtitleText: "Welcome to My Cyber Lab! I am AMAN, your AI Tutor. Let's begin your calibration. Choose your codename."
+            subtitleText: "Welcome to CyberForge AI! I am AMAN, your AI Tutor. Let's begin your calibration. Choose your codename."
           };
         case 1:
           return {

@@ -117,20 +117,20 @@ export const LandingPage: React.FC = () => {
         <div className="inline-flex items-center justify-center">
           <span className="px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-300 font-mono text-xs font-semibold tracking-wider uppercase flex items-center gap-2 shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            AI-POWERED CYBERSECURITY LEARNING PLATFORM
+            CYBERFORGE AI • BUILD SKILLS. BREAK THREATS.
           </span>
         </div>
 
         {/* Main Hero Title */}
         <div className="space-y-4 max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-6xl font-mono font-black text-white tracking-tight leading-tight">
-            Learn Cybersecurity.<br />
+            CyberForge AI<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-emerald-400">
-              Build Real Skills.
+              Build Skills. Break Threats.
             </span>
           </h1>
           <p className="text-base sm:text-xl text-slate-300 font-sans max-w-3xl mx-auto leading-relaxed">
-            An AI-powered cybersecurity learning environment where you learn concepts, practice in hands-on labs, solve challenges, and build real-world security skills.
+            CyberForge AI is an AI-powered cybersecurity learning platform combining structured learning, hands-on labs, practical challenges and an intelligent cybersecurity mentor.
           </p>
         </div>
 
@@ -358,7 +358,7 @@ export const LandingPage: React.FC = () => {
               Ready to Start Your Cybersecurity Journey?
             </h2>
             <p className="text-slate-300 text-sm max-w-lg mx-auto leading-relaxed">
-              Join MY CYBER LAB today and experience hands-on learning guided by AMAN AI.
+              Join CyberForge AI today and experience hands-on learning guided by AMAN AI.
             </p>
           </div>
 

@@ -16,6 +16,7 @@ import { WelcomeSignInPage } from './pages/WelcomeSignInPage';
 import { OnboardingPage } from './pages/OnboardingPage';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
 import { AmanVoiceGuide } from './components/common/AmanVoiceGuide';
+import { GlobalCommandPalette } from './components/common/GlobalCommandPalette';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 
@@ -279,6 +280,7 @@ const AppContent: React.FC = () => {
             </div>
 
             {/* Global Interactive Modals & Assistant */}
+            <GlobalCommandPalette />
             <OnboardingModal />
             <LessonModal />
             <MissionModal />

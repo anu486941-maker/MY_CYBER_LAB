@@ -100,12 +100,12 @@ export const WelcomeSignInPage: React.FC = () => {
 
         {/* Branded Logo Header */}
         <div className="flex flex-col items-center text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-indigo-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
-            <Shield className="w-7 h-7" />
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-slate-800 to-slate-900 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+            <Shield className="w-7 h-7 text-cyan-400" />
           </div>
           <div>
             <span className="font-mono font-bold text-[10px] text-cyan-400 tracking-widest uppercase">
-              MY CYBER LAB AUTHENTICATION
+              CYBERFORGE AI • AUTHENTICATION
             </span>
             <h1 className="text-2xl font-mono font-bold text-white mt-0.5">
               {authMode === 'signup' ? 'Create Your Account' : authMode === 'signin' ? 'Welcome Back' : 'Verify Your Email'}
@@ -288,7 +288,7 @@ export const WelcomeSignInPage: React.FC = () => {
             {/* Terms Acknowledgement */}
             {authMode === 'signup' && (
               <p className="text-[10px] text-slate-500 leading-snug">
-                By creating an account, you agree to the Ethical Hacking Guidelines and Terms of Service of MY CYBER LAB.
+                By creating an account, you agree to the Ethical Hacking Guidelines and Terms of Service of CyberForge AI.
               </p>
             )}
 

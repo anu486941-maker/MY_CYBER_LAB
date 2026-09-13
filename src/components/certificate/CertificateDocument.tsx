@@ -76,7 +76,7 @@ export const CertificateDocument: React.FC<CertificateDocumentProps> = ({
 
           <div className="space-y-1">
             <div className="text-[11px] sm:text-xs font-mono font-extrabold tracking-[0.3em] text-cyan-400 uppercase">
-              {certificate.issuer?.academyName || 'MY CYBER LAB ACADEMY & CYBER RANGE'}
+              {certificate.issuer?.academyName || 'CYBERFORGE AI ACADEMY'}
             </div>
             <h1 className="text-2xl sm:text-4xl md:text-5xl font-mono font-black tracking-tight text-white uppercase">
               {certificate.certificateTitle || 'CERTIFICATE OF COMPLETION'}

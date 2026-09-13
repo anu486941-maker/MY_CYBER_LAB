@@ -29,7 +29,7 @@ export const CertificatePage: React.FC = () => {
         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
           Server-Verified Qualifications
         </span>
-        <h1 className="text-3xl font-extrabold text-white mt-2">MY CYBER LAB Verification Certificates</h1>
+        <h1 className="text-3xl font-extrabold text-white mt-2">CyberForge AI Verification Certificates</h1>
         <p className="text-sm text-slate-400 mt-1">
           Server-validated certificates issued based on verified readiness scores and lab completions.
         </p>
@@ -57,7 +57,7 @@ export const CertificatePage: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">
             <div className="flex items-center gap-2">
               <Shield className="w-6 h-6 text-cyan-400" />
-              <span className="text-xs font-extrabold text-white uppercase tracking-widest">MY CYBER LAB AUTHORIZED CERTIFICATION</span>
+              <span className="text-xs font-extrabold text-white uppercase tracking-widest">CYBERFORGE AI AUTHORIZED CERTIFICATION</span>
             </div>
             <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-1">
               <CheckCircle2 className="w-4 h-4" /> VERIFIED BY SERVER

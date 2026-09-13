@@ -1628,7 +1628,7 @@ export const CAREER_ROLES_DATA: CareerRole[] = [
       }
     ],
     capstoneProject: {
-      title: 'My Cyber Lab CTF Arena Championship: 20-Flag Multi-Discipline Victory',
+      title: 'CyberForge AI CTF Arena Championship: 20-Flag Multi-Discipline Victory',
       description: 'Successfully solve and document writeups for 20 rigorous CTF challenges across 5 categories (Linux CLI, Network Packet Forensics, Cryptographic Ciphers, Web App Exploitation, and Reverse Engineering). Compile clean, reproducible writeups demonstrating methodology and proof-of-work.',
       skillsApplied: ['Rapid Triage', 'Cryptanalysis', 'PCAP Carving', 'Web Exploitation', 'Technical Writeup Authoring'],
       deliverable: 'Complete CTF Championship Writeup Dossier with flag verification tokens and methodology explanations.'

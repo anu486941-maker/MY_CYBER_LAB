@@ -304,13 +304,13 @@ export const OnboardingPage: React.FC = () => {
           <div className="space-y-3 max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-mono font-bold text-cyan-300 uppercase tracking-widest">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>MY CYBER LAB ACADEMY</span>
+              <span>CYBERFORGE AI ACADEMY</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-mono font-black text-white tracking-tight">
-              Welcome to MY CYBER LAB
+              Welcome to CyberForge AI
             </h1>
             <p className="text-base sm:text-lg text-slate-300 font-sans leading-relaxed">
-              Your AI-powered cybersecurity learning journey starts here.
+              Build Skills. Break Threats. Your AI-powered cybersecurity learning journey starts here.
             </p>
           </div>
 

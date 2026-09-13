@@ -50,7 +50,7 @@ export const AcquisitionReadinessPage: React.FC = () => {
               </span>
             </div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-              MY CYBER LAB — Enterprise Valuation & Architecture Specification
+              CYBERFORGE AI — Enterprise Valuation & Architecture Specification
             </h1>
             <p className="text-sm md:text-base text-slate-300 max-w-3xl mt-2 leading-relaxed">
               Complete product architecture, code inventory, security auditing, multi-language AI models, deterministic lab engines, and infrastructure economics for potential corporate acquirers and enterprise buyers.

@@ -22,7 +22,9 @@ import {
   ChevronDown,
   Flag,
   Globe,
-  FileCheck
+  FileCheck,
+  Search,
+  Command
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -66,20 +68,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
             )}
 
             <Link to="/" className="flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:border-cyan-400 group-hover:shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-b from-slate-800 to-slate-900 border border-cyan-500/40 flex items-center justify-center text-cyan-400 group-hover:border-cyan-400 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all">
                 <Shield className="w-5 h-5 text-cyan-400" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono font-extrabold text-base tracking-wider text-slate-100 group-hover:text-cyan-300 transition-colors">
-                    MY CYBER LAB
+                    CYBERFORGE
                   </span>
-                  <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono text-cyan-400 uppercase tracking-widest hidden sm:inline">
-                    ACADEMY
+                  <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono text-cyan-400 uppercase tracking-widest hidden sm:inline font-bold">
+                    AI
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 font-mono tracking-tight hidden sm:block">
-                  START FROM ZERO • MASTER ETHICAL HACKING
+                  BUILD SKILLS • BREAK THREATS
                 </p>
               </div>
             </Link>
@@ -270,6 +272,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
 
           {/* Right: Operator Telemetry & Profile Badges */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Command Palette Trigger */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
+              }}
+              className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-850 hover:border-slate-750 text-slate-400 hover:text-slate-200 text-xs font-mono transition-colors cursor-pointer"
+              title="Search modules, labs, commands (Cmd+K)"
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px]">Search</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-[10px] text-slate-400 font-bold">
+                ⌘K
+              </kbd>
+            </button>
+
             {/* Whop Membership Status Pill */}
             <WhopTierBadge className="hidden sm:inline-flex" />
             {/* Mobile WHERE AM I trigger */}

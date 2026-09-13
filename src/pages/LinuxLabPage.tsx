@@ -100,7 +100,7 @@ export const LinuxLabPage: React.FC = () => {
   const [history, setHistory] = useState<CommandHistoryItem[]>([
     {
       command: '# SYSTEM INITIALIZATION',
-      output: `╔══════════════════════════════════════════════════════════════════════════════╗\n║  MY CYBER LAB — LINUX LAB ENVIRONMENT (VIRTUAL SANDBOX)                     ║\n║  Kernel: Linux 5.15.0-89-generic #99-Ubuntu SMP x86_64                      ║\n║  Security: Strict Isolated Sandbox. Commands execute ONLY within lab.        ║\n║  Type "help" for built-in commands or explore /home/student, /labs, /notes.  ║\n╚══════════════════════════════════════════════════════════════════════════════╝`
+      output: `╔══════════════════════════════════════════════════════════════════════════════╗\n║  CYBERFORGE AI — LINUX LAB ENVIRONMENT (VIRTUAL SANDBOX)                    ║\n║  Kernel: Linux 5.15.0-89-generic #99-Ubuntu SMP x86_64                      ║\n║  Security: Strict Isolated Sandbox. Commands execute ONLY within lab.        ║\n║  Type "help" for built-in commands or explore /home/student, /labs, /notes.  ║\n╚══════════════════════════════════════════════════════════════════════════════╝`
     }
   ]);
   const [cmdIndexHistory, setCmdIndexHistory] = useState<string[]>([]);

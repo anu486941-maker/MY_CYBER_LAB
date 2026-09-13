@@ -30,7 +30,7 @@ export const DemoPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(1);
   const [selectedLanguage, setSelectedLanguage] = useState<'EN' | 'HI' | 'HINGLISH'>('HINGLISH');
   const [demoLog, setDemoLog] = useState<string[]>([
-    'MY CYBER LAB — Interactive Buyer Acquisition Demo Engine v5.0',
+    'CYBERFORGE AI — Interactive Buyer Acquisition Demo Engine v5.0',
     'Simulating end-to-end 10-step learner journey across Red & Blue team perspectives...'
   ]);
 

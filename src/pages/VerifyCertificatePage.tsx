@@ -100,7 +100,7 @@ export const VerifyCertificatePage: React.FC = () => {
           verificationUrl: `/verify-certificate?id=${cleanId}`,
           status: 'ISSUED',
           issuer: {
-            academyName: 'My Cyber Lab Academy',
+            academyName: 'CyberForge AI Academy',
             director: 'Dr. Evelyn Cross, CISSP',
             title: 'Academic Director & Lead Cyber Examiner',
             sealNumber: 'SEAL-2026-AUTH-904'
@@ -169,13 +169,13 @@ export const VerifyCertificatePage: React.FC = () => {
               <span className="px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 font-mono text-xs font-semibold flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5" /> PUBLIC CREDENTIAL REGISTRY
               </span>
-              <span className="text-xs font-mono text-slate-500 hidden sm:inline">• MY CYBER LAB ACADEMY</span>
+              <span className="text-xs font-mono text-slate-500 hidden sm:inline">• CYBERFORGE AI ACADEMY</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-mono font-bold text-white">
               Certificate Verification Portal
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 font-mono">
-              Instantly audit the authenticity, training metrics, and cryptographic hash of any My Cyber Lab credential.
+              Instantly audit the authenticity, training metrics, and cryptographic hash of any CyberForge AI credential.
             </p>
           </div>
 
@@ -459,7 +459,7 @@ export const VerifyCertificatePage: React.FC = () => {
           Verification Integrity & Privacy Guarantee
         </div>
         <p className="leading-relaxed">
-          My Cyber Lab cryptographically validates each Certificate ID against our immutable database of laboratory sessions, CTF flag submissions, and practical quizzes. To safeguard learner privacy, private contact details, email addresses, and network session credentials are never stored or exposed on public verification endpoints.
+          CyberForge AI cryptographically validates each Certificate ID against our immutable database of laboratory sessions, CTF flag submissions, and practical quizzes. To safeguard learner privacy, private contact details, email addresses, and network session credentials are never stored or exposed on public verification endpoints.
         </p>
       </div>
 
