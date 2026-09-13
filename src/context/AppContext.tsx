@@ -273,7 +273,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('mcl_profile') || localStorage.getItem('mycyberlab_profile');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          // Discard legacy hardcoded demo placeholder
+          if (parsed.name === 'Alex Mercer') {
+            parsed.name = '';
+          }
+          return { ...INITIAL_USER_PROFILE, ...parsed };
+        }
       } catch {
         return INITIAL_USER_PROFILE;
       }
@@ -1035,10 +1042,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const ls = data.learningState as UserLearningState | undefined;
 
         if (data.profile) {
+          const rawName = data.profile.name;
+          const cleanName = (rawName && rawName !== 'Alex Mercer') ? rawName : (user.displayName || user.email?.split('@')[0] || '');
           setProfile(prev => ({
             ...prev,
             ...data.profile,
-            name: data.profile.name || user.displayName || prev.name,
+            name: cleanName,
             codename: data.profile.codename || prev.codename
           }));
         }

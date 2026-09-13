@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { CinematicProductVideoModal } from '../components/common/CinematicProductVideoModal';
 import { 
   Shield, 
   Terminal, 
@@ -19,12 +20,14 @@ import {
   Zap,
   Play,
   Crown,
-  Check
+  Check,
+  Film
 } from 'lucide-react';
 
 export const LandingPage: React.FC = () => {
   const { setActiveCareerTrack, currentUser } = useApp();
   const navigate = useNavigate();
+  const [showCinematicVideo, setShowCinematicVideo] = useState<boolean>(false);
 
   const handleStartLearning = () => {
     if (currentUser) {
@@ -132,7 +135,7 @@ export const LandingPage: React.FC = () => {
         </div>
 
         {/* Hero CTA Action Group */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
             onClick={handleStartLearning}
             className="w-full sm:w-auto py-4 px-8 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 hover:opacity-90 text-slate-950 font-mono font-black text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
@@ -142,18 +145,19 @@ export const LandingPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/pricing')}
-            className="w-full sm:w-auto py-4 px-7 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 to-slate-900 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+            onClick={() => setShowCinematicVideo(true)}
+            className="w-full sm:w-auto py-4 px-6 rounded-xl border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.2)] group"
           >
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span>WHOP PASSES ($29/mo)</span>
+            <Play className="w-4 h-4 text-cyan-400 fill-cyan-400 group-hover:scale-110 transition-transform" />
+            <span>WATCH SHOWCASE (2:00)</span>
           </button>
 
           <button
-            onClick={() => scrollToSection('hands-on-labs')}
-            className="w-full sm:w-auto py-4 px-7 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+            onClick={() => navigate('/pricing')}
+            className="w-full sm:w-auto py-4 px-6 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 to-slate-900 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.15)]"
           >
-            <span>EXPLORE LABS</span>
+            <Crown className="w-4 h-4 text-amber-400" />
+            <span>WHOP PASSES ($29/mo)</span>
           </button>
         </div>
 
@@ -366,9 +370,22 @@ export const LandingPage: React.FC = () => {
               <span>GET STARTED NOW</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setShowCinematicVideo(true)}
+              className="w-full sm:w-auto py-4 px-6 rounded-xl border border-cyan-500/40 bg-slate-900/90 hover:bg-slate-800 text-cyan-300 font-mono font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <Film className="w-4 h-4 text-cyan-400" />
+              <span>WATCH 2:00 SHOWCASE</span>
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Interactive 2-Minute Cinematic Showcase Modal */}
+      <CinematicProductVideoModal 
+        isOpen={showCinematicVideo} 
+        onClose={() => setShowCinematicVideo(false)} 
+      />
     </div>
   );
 };

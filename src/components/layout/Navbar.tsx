@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { SyncIndicatorBadge } from '../common/SyncIndicatorBadge';
@@ -18,7 +18,11 @@ import {
   User,
   Zap,
   Crosshair,
-  Compass
+  Compass,
+  ChevronDown,
+  Flag,
+  Globe,
+  FileCheck
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -30,6 +34,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
   const { profile, setIsOnboardingOpen } = useApp();
   const location = useLocation();
   const [isWhereAmIOpen, setIsWhereAmIOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setIsMoreOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const xpProgressPercent = Math.min(100, Math.round((profile.xp / profile.xpToNextLevel) * 100));
 
@@ -91,6 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
               WHAT NEXT?
             </button>
 
+            {/* Primary Clean Navigation Items */}
             <Link
               to="/dashboard"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
@@ -99,48 +116,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
-              DASHBOARD
+              HOME
             </Link>
-            <Link
-              to="/academy"
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname === '/academy' || location.pathname.startsWith('/video-learning')
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              ACADEMY
-            </Link>
+
             <Link
               to="/roadmap"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname === '/roadmap' || location.pathname === '/learning-path'
+                location.pathname === '/roadmap'
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
               ROADMAP
             </Link>
-            <Link
-              to="/modules"
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname.startsWith('/modules') || location.pathname.startsWith('/learn/module')
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              CYBER LABS
-            </Link>
-            <Link
-              to="/practice"
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname.startsWith('/practice')
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              PRACTICE HUB
-            </Link>
+
             <Link
               to="/missions"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
@@ -151,26 +140,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
             >
               MISSIONS
             </Link>
+
             <Link
-              to="/linux-lab"
+              to="/practice"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname === '/linux-lab'
+                location.pathname.startsWith('/practice') || location.pathname.startsWith('/modules')
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
-              LINUX LAB
+              LABS
             </Link>
-            <Link
-              to="/ctf-arena"
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
-                location.pathname === '/ctf-arena'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
-            >
-              CTF ARENA
-            </Link>
+
             <Link
               to="/ai-mentor"
               className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
@@ -180,19 +161,110 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleSidebar, isSidebarOpen }
               }`}
             >
               <Sparkles className="w-3 h-3 text-purple-400" />
-              AI MENTOR
+              AMAN
             </Link>
+
             <Link
-              to="/pricing"
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 ${
-                location.pathname === '/pricing'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
-                  : 'text-amber-400/90 hover:text-amber-200 hover:bg-amber-950/40'
+              to="/learning-path"
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                location.pathname === '/learning-path'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
-              <Award className="w-3 h-3 text-amber-400" />
-              WHOP PASS
+              PROGRESS
             </Link>
+
+            {/* MORE Dropdown Menu for Advanced Features */}
+            <div className="relative" ref={moreMenuRef}>
+              <button
+                onClick={() => setIsMoreOpen(!isMoreOpen)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                  isMoreOpen || ['/ctf-arena', '/linux-lab', '/skill-library', '/certificate', '/pricing', '/academy'].includes(location.pathname)
+                    ? 'bg-slate-800 text-white border border-slate-700'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                <span>MORE</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMoreOpen ? 'rotate-180 text-cyan-400' : 'text-slate-500'}`} />
+              </button>
+
+              {isMoreOpen && (
+                <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-slate-950 border border-slate-800 shadow-2xl p-2 z-50 space-y-1 animate-in fade-in slide-in-from-top-2 duration-150 font-mono text-xs">
+                  <Link
+                    to="/ctf-arena"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <Flag className="w-4 h-4 text-purple-400" />
+                    <span>CTF ARENA</span>
+                  </Link>
+
+                  <Link
+                    to="/linux-lab"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <Terminal className="w-4 h-4 text-cyan-400" />
+                    <span>LINUX LAB</span>
+                  </Link>
+
+                  <Link
+                    to="/practice/soc-simulator"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span>SOC SIMULATOR</span>
+                  </Link>
+
+                  <Link
+                    to="/practice/web-security"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <Globe className="w-4 h-4 text-emerald-400" />
+                    <span>WEB LAB</span>
+                  </Link>
+
+                  <Link
+                    to="/academy"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-rose-400" />
+                    <span>ACADEMY</span>
+                  </Link>
+
+                  <Link
+                    to="/skill-library"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <BookOpen className="w-4 h-4 text-teal-400" />
+                    <span>SKILL LIBRARY</span>
+                  </Link>
+
+                  <Link
+                    to="/certificate"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-900 transition-colors"
+                  >
+                    <FileCheck className="w-4 h-4 text-amber-400" />
+                    <span>CERTIFICATES</span>
+                  </Link>
+
+                  <Link
+                    to="/pricing"
+                    onClick={() => setIsMoreOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 border border-amber-500/20 transition-colors"
+                  >
+                    <Award className="w-4 h-4 text-amber-400" />
+                    <span>WHOP PASS</span>
+                  </Link>
+                </div>
+              )}
+            </div>
           </nav>
 
 

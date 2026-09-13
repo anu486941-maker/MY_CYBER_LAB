@@ -60,6 +60,8 @@ export interface UserProfile {
   selectedRole?: CareerRoleId | string;
   roleSelectedAt?: string;
   targetRole?: CareerRoleId | string;
+  learningGoal?: string;
+  skillLevel?: 'Beginner' | 'Foundation' | 'Intermediate' | 'Advanced' | string;
   secondaryRoles?: (CareerRoleId | string)[];
   careerPath?: string;
   rank?: string;
