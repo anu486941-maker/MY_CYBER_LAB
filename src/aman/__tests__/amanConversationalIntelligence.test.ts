@@ -148,4 +148,25 @@ describe('AMAN Conversational Intelligence & Runtime Suite', () => {
     expect(response.text).not.toContain('Networking Fundamentals');
     expect(response.text).not.toContain('You are currently on');
   });
+
+  it('11. User: "I don\'t know where to start" -> Classifies as LEARNING_GUIDANCE and recommends clear next step', async () => {
+    const classification = AmanIntentEngine.classifyIntent("I don't know where to start");
+    expect(classification.intent).toBe('LEARNING_GUIDANCE');
+    expect(classification.mode).toBe('LEARNING_MODE');
+    expect(classification.isCasual).toBe(false);
+  });
+
+  it('12. User: "I\'m lost" / "I\'m confused" / "what should I do?" -> Classifies as LEARNING_GUIDANCE', async () => {
+    const inputs = ["I'm lost", "I am confused", "what should I do?", "help me start", "where do I begin?"];
+    for (const input of inputs) {
+      const classification = AmanIntentEngine.classifyIntent(input);
+      expect(classification.intent).toBe('LEARNING_GUIDANCE');
+    }
+  });
+
+  it('13. User in Hinglish: "kahan se start karu" -> Classifies as LEARNING_GUIDANCE with Hinglish language', async () => {
+    const classification = AmanIntentEngine.classifyIntent("kahan se start karu");
+    expect(classification.intent).toBe('LEARNING_GUIDANCE');
+    expect(classification.detectedLanguage).toBe('Hinglish');
+  });
 });

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { CinematicProductVideoModal } from '../components/common/CinematicProductVideoModal';
+import { CyberForgeCore } from '../components/3d/CyberForgeCore';
+import { Interactive3DCyberNetwork } from '../components/3d/Interactive3DCyberNetwork';
 import { 
   Shield, 
   Terminal, 
@@ -37,10 +39,12 @@ export const LandingPage: React.FC = () => {
     }
   };
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
+  const handleExploreLabs = () => {
+    const el = document.getElementById('hands-on-labs');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      navigate('/practice');
     }
   };
 
@@ -105,82 +109,169 @@ export const LandingPage: React.FC = () => {
 
   return (
     <div className="space-y-16 pb-20">
-      {/* Hero Section */}
-      <section className="relative pt-10 pb-12 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto space-y-8">
+      {/* 1. CINEMATIC LANDING PAGE HERO */}
+      <section className="relative min-h-[92vh] sm:min-h-screen flex flex-col justify-between pt-6 pb-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
         
-        {/* Glow backdrop */}
-        <div className="absolute inset-0 -z-10 flex items-center justify-center opacity-30 pointer-events-none">
-          <div className="w-[600px] h-[350px] bg-gradient-to-tr from-cyan-600/30 via-blue-600/20 to-purple-600/30 rounded-full blur-[100px]" />
+        {/* Layer 1 & 2: Atmospheric Gradient & Grid Backdrop */}
+        <div className="absolute inset-0 -z-10 flex items-center justify-center pointer-events-none overflow-hidden">
+          {/* Radial Light behind Core */}
+          <div className="absolute right-0 top-1/4 w-[650px] h-[650px] bg-gradient-to-tr from-cyan-600/20 via-blue-600/15 to-violet-600/20 rounded-full blur-[140px]" />
+          {/* Faint Cyber Environment Glow */}
+          <div className="absolute left-0 bottom-10 w-[500px] h-[500px] bg-indigo-950/30 rounded-full blur-[120px]" />
+          <div className="absolute inset-0 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:32px_32px] opacity-10" />
         </div>
 
-        {/* Top Tagline Badge */}
-        <div className="inline-flex items-center justify-center">
-          <span className="px-3.5 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-500/30 text-cyan-300 font-mono text-xs font-semibold tracking-wider uppercase flex items-center gap-2 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            CYBERFORGE AI • BUILD SKILLS. BREAK THREATS.
-          </span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center my-auto pt-4">
+          
+          {/* Left Side: Headline & Copy */}
+          <div className="lg:col-span-7 space-y-8 text-left z-10">
+            
+            {/* Small Eyebrow */}
+            <div className="inline-flex items-center">
+              <span className="px-4 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-black tracking-widest uppercase flex items-center gap-2 shadow-md">
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                CYBERFORGE AI
+              </span>
+            </div>
+
+            {/* Main Hero Headline */}
+            <div className="space-y-4">
+              <h1 className="text-4xl sm:text-6xl lg:text-7xl font-mono font-black text-white tracking-tight uppercase leading-[0.98]">
+                CYBERSECURITY<br />
+                LEARNING,<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400">
+                  REIMAGINED.
+                </span>
+              </h1>
+              <p className="text-base sm:text-lg text-slate-300 font-sans leading-relaxed max-w-xl">
+                Master cybersecurity through hands-on labs, real-world scenarios, and AI-powered guidance.
+              </p>
+            </div>
+
+            {/* Hero CTA Action Buttons */}
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <button
+                onClick={handleStartLearning}
+                className="py-4 px-8 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 hover:opacity-95 text-slate-950 font-mono font-black text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 shadow-[0_0_35px_rgba(6,182,212,0.35)] hover:shadow-[0_0_45px_rgba(6,182,212,0.5)] hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                <span>ENTER THE CYBER RANGE</span>
+                <ArrowRight className="w-4.5 h-4.5 text-slate-950" />
+              </button>
+
+              <button
+                onClick={handleExploreLabs}
+                className="py-4 px-7 rounded-xl border border-cyan-500/40 bg-slate-900/90 hover:bg-slate-800 hover:border-cyan-400 text-cyan-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                <Server className="w-4 h-4 text-cyan-400" />
+                <span>EXPLORE THE LABS</span>
+              </button>
+
+              <button
+                onClick={() => setShowCinematicVideo(true)}
+                className="py-4 px-5 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-all cursor-pointer"
+              >
+                <Play className="w-4 h-4 text-cyan-400" />
+                <span>SHOWCASE (2:00)</span>
+              </button>
+            </div>
+
+            {/* Metric Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 font-mono text-left">
+              <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-0.5">
+                <span className="text-xl font-bold text-cyan-400">10+</span>
+                <span className="text-[11px] text-slate-400 block font-sans">Interactive Sandboxes</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-0.5">
+                <span className="text-xl font-bold text-indigo-400">100+</span>
+                <span className="text-[11px] text-slate-400 block font-sans">Missions & CTFs</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-0.5">
+                <span className="text-xl font-bold text-emerald-400">24/7</span>
+                <span className="text-[11px] text-slate-400 block font-sans">AMAN AI Mentorship</span>
+              </div>
+              <div className="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-0.5">
+                <span className="text-xl font-bold text-amber-400">100%</span>
+                <span className="text-[11px] text-slate-400 block font-sans">SHA-256 Credentials</span>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Right Side: Cinematic 3D Hero CyberForge Core */}
+          <div className="lg:col-span-5 w-full relative z-10">
+            <CyberForgeCore />
+          </div>
+
         </div>
 
-        {/* Main Hero Title */}
-        <div className="space-y-4 max-w-4xl mx-auto">
-          <h1 className="text-4xl sm:text-6xl font-mono font-black text-white tracking-tight leading-tight">
-            CyberForge AI<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-indigo-300 to-emerald-400">
-              Build Skills. Break Threats.
+        {/* Bottom Scroll Indicator */}
+        <div className="flex flex-col items-center gap-2 pt-8 font-mono text-[10px] text-slate-400 uppercase tracking-widest animate-pulse pointer-events-none">
+          <span>SCROLL TO EXPLORE</span>
+          <div className="w-[1px] h-7 bg-gradient-to-b from-cyan-400 via-cyan-500/50 to-transparent" />
+        </div>
+      </section>
+
+      {/* 3 PRIMARY PILLARS FEATURE REVEAL */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all group shadow-[0_0_30px_rgba(6,182,212,0.05)] hover:-translate-y-1">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <Terminal className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-widest block mb-1">
+              PILLAR 01
             </span>
-          </h1>
-          <p className="text-base sm:text-xl text-slate-300 font-sans max-w-3xl mx-auto leading-relaxed">
-            CyberForge AI is an AI-powered cybersecurity learning platform combining structured learning, hands-on labs, practical challenges and an intelligent cybersecurity mentor.
+            <h3 className="text-xl font-mono font-bold text-white mb-2">HANDS-ON LABS</h3>
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              Practice real cybersecurity concepts through interactive Linux terminals, networking tools, OWASP web vulnerabilities, and live CTFs.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-violet-500/50 transition-all group shadow-[0_0_30px_rgba(139,92,246,0.05)] hover:-translate-y-1">
+            <div className="w-12 h-12 rounded-2xl bg-violet-950/80 border border-violet-500/40 text-violet-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <Bot className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-mono font-bold text-violet-400 uppercase tracking-widest block mb-1">
+              PILLAR 02
+            </span>
+            <h3 className="text-xl font-mono font-bold text-white mb-2">AMAN AI</h3>
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              Your personal 24/7 AI cybersecurity instructor providing real-time command breakdowns, concept analogies, and hint ladders.
+            </p>
+          </div>
+
+          <div className="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 transition-all group shadow-[0_0_30px_rgba(16,185,129,0.05)] hover:-translate-y-1">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <Server className="w-6 h-6" />
+            </div>
+            <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-widest block mb-1">
+              PILLAR 03
+            </span>
+            <h3 className="text-xl font-mono font-bold text-white mb-2">CYBER RANGE</h3>
+            <p className="text-sm text-slate-300 leading-relaxed font-sans">
+              Explore realistic multi-machine security environments across corporate Active Directory, healthcare PACS, and banking infrastructures.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. DEDICATED INTERACTIVE 3D CYBER NETWORK VISUALIZATION */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 space-y-6">
+        <div className="text-center space-y-2 max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold uppercase">
+            <Network className="w-3.5 h-3.5 text-cyan-400" />
+            <span>3D INTERACTIVE CYBER RANGE TOPOLOGY</span>
+          </div>
+          <h2 className="text-2xl sm:text-4xl font-mono font-bold text-white tracking-tight">
+            Explore Real Cybersecurity Environments
+          </h2>
+          <p className="text-sm text-slate-300 font-sans leading-relaxed">
+            Inspect real network topology nodes, active asset roles, open services, and live audit telemetry across FinVault, PACS Healthcare, and Enterprise Active Directory target ranges.
           </p>
         </div>
 
-        {/* Hero CTA Action Group */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={handleStartLearning}
-            className="w-full sm:w-auto py-4 px-8 rounded-xl bg-gradient-to-r from-cyan-500 via-indigo-500 to-emerald-500 hover:opacity-90 text-slate-950 font-mono font-black text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
-          >
-            <span>START LEARNING</span>
-            <ArrowRight className="w-4 h-4 text-slate-950" />
-          </button>
-
-          <button
-            onClick={() => setShowCinematicVideo(true)}
-            className="w-full sm:w-auto py-4 px-6 rounded-xl border border-cyan-500/50 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_20px_rgba(6,182,212,0.2)] group"
-          >
-            <Play className="w-4 h-4 text-cyan-400 fill-cyan-400 group-hover:scale-110 transition-transform" />
-            <span>WATCH SHOWCASE (2:00)</span>
-          </button>
-
-          <button
-            onClick={() => navigate('/pricing')}
-            className="w-full sm:w-auto py-4 px-6 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-950/40 to-slate-900 hover:bg-slate-800 text-amber-300 font-mono font-bold text-xs tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.15)]"
-          >
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span>WHOP PASSES ($29/mo)</span>
-          </button>
-        </div>
-
-        {/* Feature Badges Metric Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 text-left font-mono">
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-1">
-            <span className="text-2xl font-bold text-cyan-400">10+</span>
-            <span className="text-xs text-slate-400 block font-sans">Interactive Labs & Sandboxes</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-1">
-            <span className="text-2xl font-bold text-indigo-400">100+</span>
-            <span className="text-xs text-slate-400 block font-sans">Hands-on Missions & CTFs</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-1">
-            <span className="text-2xl font-bold text-emerald-400">24/7</span>
-            <span className="text-xs text-slate-400 block font-sans">AMAN AI Socratic Mentorship</span>
-          </div>
-          <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-1">
-            <span className="text-2xl font-bold text-amber-400">100%</span>
-            <span className="text-xs text-slate-400 block font-sans">Verifiable Skill Credentials</span>
-          </div>
-        </div>
-
+        {/* 3D Network Component */}
+        <Interactive3DCyberNetwork />
       </section>
 
       {/* Featured Career Paths */}

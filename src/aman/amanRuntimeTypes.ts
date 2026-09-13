@@ -31,6 +31,7 @@ export type AmanIntent =
   | 'GREETING'
   | 'SMALL_TALK'
   | 'LEARNING_QUESTION'
+  | 'LEARNING_GUIDANCE'
   | 'CURRENT_MISSION'
   | 'ROADMAP'
   | 'NAVIGATION'

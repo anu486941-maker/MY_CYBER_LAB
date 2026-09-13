@@ -173,6 +173,8 @@ const AppContent: React.FC = () => {
                       <RoleGuard>
                         <Routes>
                           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                          <Route path="/landing" element={<LandingPage />} />
+                          <Route path="/home" element={<LandingPage />} />
                           <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
                           <Route path="/dashboard" element={<DashboardPage />} />
                           <Route path="/select-role" element={<RoleSelectionPage />} />

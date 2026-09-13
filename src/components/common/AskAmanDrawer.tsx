@@ -415,6 +415,59 @@ export const AskAmanDrawer: React.FC<AskAmanDrawerProps> = ({ isOpen: controlled
         { type: 'OPEN_LEARNING_PATH', targetRoute: '/learning-path', label: '🎓 Open Learning Path' }
       ];
     }
+    else if (
+      query.includes("don't know where to start") ||
+      query.includes("dont know where to start") ||
+      query.includes("where do i begin") ||
+      query.includes("where should i start") ||
+      query.includes("help me start") ||
+      query.includes("how to start") ||
+      query.includes("im lost") ||
+      query.includes("i'm lost") ||
+      query.includes("i am lost") ||
+      query.includes("im confused") ||
+      query.includes("i'm confused") ||
+      query.includes("i am confused") ||
+      query.includes("samjh nahi aa raha") ||
+      query.includes("samajh nahi aa raha") ||
+      query.includes("what should i do") ||
+      query.includes("give me direction") ||
+      query.includes("kahan se start karu") ||
+      query.includes("direction do")
+    ) {
+      const nextAct = nextMove || { title: 'Foundations Hands-On Lab', activityId: 'module-01-intro-cyber', actionType: 'LAB', stepLink: '/linux-lab' };
+      const nextTitle = nextAct.title || 'Foundations Hands-On Lab';
+      const nextReason = (nextAct as any).reason || (nextAct as any).hinglishWhy || 'To build foundational cybersecurity skills and unlock advanced tracks.';
+      const nextLink = (nextAct as any).stepLink || (nextAct.actionType === 'LAB' ? '/linux-lab' : '/modules');
+
+      const isHinglish = profile.language === 'Hinglish' || profile.language === 'Hindi';
+      if (isHinglish) {
+        localResponseText = `Main aapke saath hoon. Aap abhi Level ${profile.cyberLevel} par **${position.currentCourse}** sikh rahe ho.
+
+Sab kuch ek saath choose karne ki zaroorat nahi hai.
+
+Aapka best next step:
+🎯 **${nextTitle}**
+
+**Kyunki:**
+${nextReason}`;
+      } else {
+        localResponseText = `I'm with you. You're currently at Level ${profile.cyberLevel} in **${position.currentCourse}**.
+
+Don't worry about choosing everything at once.
+
+Your best next step is:
+🎯 **${nextTitle}**
+
+**Why:**
+${nextReason}`;
+      }
+
+      localActions = [
+        { type: 'RESUME_LEARNING', targetRoute: nextLink, label: `🚀 Launch Next: ${nextTitle}` },
+        { type: 'OPEN_ROADMAP', targetRoute: '/roadmap', label: '🗺️ View Career Roadmap' }
+      ];
+    }
     else if (query === "what's next" || query === "what's next?" || query === "what is next" || query === "what should i learn next" || query === "what should i learn next?" || query === "what should i do next" || query === "agla kya hai" || query === "agla lesson kholo") {
       const nextAct = nextMove || { title: 'Foundations Hands-On Lab', activityId: 'module-01-intro-cyber', actionType: 'LAB' };
       const reasonStr = (nextAct as any).reason || 'To reinforce foundational skills and unlock advanced tracks';

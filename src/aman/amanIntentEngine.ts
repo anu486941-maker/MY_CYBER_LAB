@@ -248,6 +248,34 @@ export class AmanIntentEngine {
     }
 
     // -------------------------------------------------------------
+    // 4B. LEARNING GUIDANCE / UNCERTAINTY ("I don't know where to start", "I'm lost", "I'm confused", "Where do I begin?")
+    // -------------------------------------------------------------
+    const isUncertainty = /i\s*(dont|don't)?\s*know\s*where\s*to\s*start|where\s*do\s*i\s*begin|where\s*should\s*i\s*start|how\s*to\s*start|help\s*me\s*start|kahan?\s*se\s*start\s*karu|kaha\s*se\s*start\s*karu/i.test(clean);
+    const isConfusedOrLost = /^(i('?m|m| am)\s+)?(confused|lost|blank)$/i.test(clean) || clean.includes('im confused') || clean.includes('i am confused') || clean.includes('im lost') || clean.includes('i am lost') || clean.includes('samjh nahi aa raha') || clean.includes('samajh nahi aa raha') || clean.includes('samajh nhi aa raha');
+    const isSeekingDirection = (/what\s*should\s*i\s*do\s*now|what\s*do\s*i\s*do\s*now|what\s*to\s*do\s*now|give\s*me\s*direction|need\s*direction|what\s*should\s*i\s*learn|direction\s*do/i.test(clean) || clean === 'what should i do') && !clean.includes('first') && !clean.includes('next');
+    const isWhereAmI = /^where\s*am\s*i(\s*in\s*the\s*roadmap)?$/i.test(clean) || clean.includes('where am i in the roadmap') || clean.includes('what level am i') || clean.includes('my level') || clean.includes('kahan hoon') || clean.includes('kaha hoon');
+
+    if (isUncertainty || isConfusedOrLost || isSeekingDirection || isWhereAmI) {
+      return {
+        intent: 'LEARNING_GUIDANCE',
+        mode: 'LEARNING_MODE',
+        detectedLanguage: detectedLang,
+        confidence: 0.98,
+        isCasual: false,
+        contextRelevance: {
+          useCurrentCourse: true,
+          useCurrentMission: true,
+          useCurrentPage: true,
+          useProgress: true,
+          useLab: true,
+          allowToolExecution: true,
+          allowNavigation: true
+        },
+        resolvedEntity
+      };
+    }
+
+    // -------------------------------------------------------------
     // 5. PROGRESS & CAREER READINESS ("What's my progress?", "How am I doing?")
     // -------------------------------------------------------------
     if (

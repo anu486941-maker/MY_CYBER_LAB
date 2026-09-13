@@ -248,6 +248,7 @@ export function detectAmanIntent(
 ): {
   intent: 
     | 'CONVERSATION'
+    | 'LEARNING_GUIDANCE'
     | 'CAREER_LEARNING_INTENT'
     | 'CAREER_ROADMAP'
     | 'RESUME_CAREER_PATH'
@@ -409,6 +410,54 @@ export function detectAmanIntent(
       useLearningContext: false,
       useProgressContext: false,
       useTechnicalContext: false
+    };
+  }
+
+  // 1.5 PRIORITY 1.5 — LEARNING GUIDANCE / UNCERTAINTY ("I don't know where to start", "I'm lost", "I'm confused", "What should I do?", "Where am I?")
+  const isLearningGuidance =
+    lower.includes("don't know where to start") ||
+    lower.includes("dont know where to start") ||
+    lower.includes("where to start") ||
+    lower.includes("where do i begin") ||
+    lower.includes("where should i start") ||
+    lower.includes("help me start") ||
+    lower.includes("how to start") ||
+    lower.includes("i'm lost") ||
+    lower.includes("im lost") ||
+    lower.includes("i am lost") ||
+    lower.includes("i'm confused") ||
+    lower.includes("im confused") ||
+    lower.includes("i am confused") ||
+    lower.includes("samjh nahi aa raha") ||
+    lower.includes("samajh nahi aa raha") ||
+    lower.includes("samajh nhi aa raha") ||
+    lower.includes("what should i do") ||
+    lower.includes("what do i do now") ||
+    lower.includes("what should i do now") ||
+    lower.includes("what to do now") ||
+    lower.includes("give me direction") ||
+    lower.includes("need direction") ||
+    lower.includes("direction do") ||
+    lower.includes("mujhko direction do") ||
+    lower === "where am i" ||
+    lower.includes("where am i in the roadmap") ||
+    lower.includes("what level am i") ||
+    lower.includes("kahan se start karu") ||
+    lower.includes("kaha se start karu");
+
+  if (isLearningGuidance) {
+    return {
+      intent: 'LEARNING_GUIDANCE',
+      useRoomContext: true,
+      useCareerContext: true,
+      useLearningContext: true,
+      useProgressContext: true,
+      useTechnicalContext: true,
+      action: {
+        type: 'RESUME_LEARNING',
+        targetRoute: '/dashboard',
+        label: '🚀 Continue Learning Position'
+      }
     };
   }
 

@@ -151,46 +151,68 @@ export async function runAmanDiagnostic(options?: DiagnosticOptions): Promise<Di
   });
 
   // STAGE 4: NETWORK_DISPATCH
-  addLog('info', 'NETWORK_DISPATCH', `Dispatching POST request to ${endpoint} with 15s timeout...`);
-  let response: Response;
+  const targetUrl = typeof window !== 'undefined' ? `${window.location.origin}${endpoint}` : endpoint;
+  addLog('info', 'NETWORK_DISPATCH', `Dispatching POST request to ${endpoint} (${targetUrl}) with 15s timeout...`);
+  let response!: Response;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     controller.abort('DIAGNOSTIC_TIMEOUT_15S');
   }, 15000);
 
-  try {
-    const fetchStart = performance.now();
-    response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'text/plain, application/json, */*'
-      },
-      body: payloadStr,
-      signal: controller.signal
-    });
+  let lastDispatchError: any = null;
+  let dispatchSuccess = false;
+  const dispatchCandidates = [endpoint, targetUrl];
 
-    clearTimeout(timeoutId);
-    ttfbMs = Math.round(performance.now() - fetchStart);
-    addLog('info', 'NETWORK_DISPATCH', `Network handshake succeeded. TTFB: ${ttfbMs}ms`);
+  for (let attempt = 0; attempt < dispatchCandidates.length; attempt++) {
+    const currentCandidate = dispatchCandidates[attempt];
+    try {
+      const fetchStart = performance.now();
+      response = await fetch(currentCandidate, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/plain, application/json, */*'
+        },
+        body: payloadStr,
+        signal: controller.signal
+      });
 
-    stages.push({
-      stage: 'NETWORK_DISPATCH',
-      status: 'PASS',
-      message: `HTTP response headers received in ${ttfbMs}ms`,
-      details: { ttfbMs }
-    });
-  } catch (err: any) {
+      clearTimeout(timeoutId);
+      ttfbMs = Math.round(performance.now() - fetchStart);
+      addLog('info', 'NETWORK_DISPATCH', `Network handshake succeeded via ${currentCandidate}. TTFB: ${ttfbMs}ms`);
+
+      stages.push({
+        stage: 'NETWORK_DISPATCH',
+        status: 'PASS',
+        message: `HTTP response headers received in ${ttfbMs}ms`,
+        details: { ttfbMs, candidateUsed: currentCandidate }
+      });
+      dispatchSuccess = true;
+      break;
+    } catch (err: any) {
+      lastDispatchError = err;
+      const isTimeout = err?.name === 'AbortError' || err === 'DIAGNOSTIC_TIMEOUT_15S' || controller.signal.aborted;
+      if (isTimeout) {
+        break; // Stop immediately on timeout
+      }
+      if (attempt < dispatchCandidates.length - 1) {
+        addLog('warn', 'NETWORK_DISPATCH', `Initial dispatch to ${currentCandidate} failed. Retrying via fallback origin (${dispatchCandidates[attempt + 1]})...`);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  if (!dispatchSuccess) {
     clearTimeout(timeoutId);
     const fetchDuration = Math.round(performance.now() - startTime);
-    const isTimeout = err?.name === 'AbortError' || err === 'DIAGNOSTIC_TIMEOUT_15S';
+    const isTimeout = lastDispatchError?.name === 'AbortError' || lastDispatchError === 'DIAGNOSTIC_TIMEOUT_15S' || controller.signal.aborted;
 
-    addLog('error', 'NETWORK_DISPATCH', isTimeout ? 'Request timed out after 15s.' : 'Network fetch failed.', err);
+    addLog('error', 'NETWORK_DISPATCH', isTimeout ? 'Request timed out after 15s.' : 'Network fetch failed.', lastDispatchError);
 
     stages.push({
       stage: 'NETWORK_DISPATCH',
       status: 'FAIL',
-      message: isTimeout ? 'Request timed out after 15 seconds.' : `Network fetch error: ${err?.message || err}`,
+      message: isTimeout ? 'Request timed out after 15 seconds.' : `Network fetch error: ${lastDispatchError?.message || lastDispatchError}`,
       details: { isTimeout, durationMs: fetchDuration }
     });
 

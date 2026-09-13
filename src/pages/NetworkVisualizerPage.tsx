@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Interactive3DCyberNetwork } from '../components/3d/Interactive3DCyberNetwork';
 import { 
   Network, 
   Play, 
@@ -469,6 +470,15 @@ export const NetworkVisualizerPage: React.FC = () => {
             Inspect real animated packet transmissions across OSI Layer 2 (Data Link), Layer 3 (Network IP), Layer 4 (Transport Sockets), and Layer 7 (Application Payload). Step frame-by-frame and study live protocol mechanics and defensive security implications.
           </p>
         </div>
+      </div>
+
+      {/* 3D Cyber Range Network Topology Canvas */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between font-mono text-xs text-slate-400 px-2">
+          <span className="font-bold text-cyan-400 uppercase">3D NETWORK TOPOLOGY & REAL TARGET ASSETS</span>
+          <span>FinVault • PACS • Active Directory</span>
+        </div>
+        <Interactive3DCyberNetwork />
       </div>
 
       {/* Protocol Selection Tabs */}

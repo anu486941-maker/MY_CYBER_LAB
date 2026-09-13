@@ -31,8 +31,132 @@ export function generateLocalGuidanceResponse(
   let fullText = '';
   let summary = '';
 
+  // 0. LEARNING_GUIDANCE ("I don't know where to start", "I'm lost", "I'm confused", "What should I do?", "Where am I?")
+  if (intentResult.intent === 'LEARNING_GUIDANCE') {
+    const qLower = userQuery.toLowerCase().trim();
+    const isWhereAmIQuery = qLower.includes('where am i') || qLower.includes('what level am i') || qLower.includes('kahan hoon') || qLower.includes('my level');
+
+    const roleName = contextData?.careerPath || contextData?.targetRoleTitle || 'Cybersecurity Student';
+    const currentCourse = contextData?.currentCourse || 'Networking Fundamentals';
+    const currentModule = contextData?.currentModule || 'IP Addressing & Subnetting';
+    const currentLevel = contextData?.cyberLevel || contextData?.level || 1;
+    const rank = contextData?.rank || 'Script Kiddie';
+    const xp = contextData?.xp || 0;
+    const progressPct = contextData?.progressPercentage || contextData?.overallMasteryPercentage || 0;
+
+    const nextActionTitle = contextData?.nextMove?.title || contextData?.nextRequiredSkill || 'Foundations Hands-On Lab';
+    const nextActionReason = contextData?.nextMove?.reason || contextData?.nextMove?.whyDescription || 'To reinforce foundational cybersecurity skills and unlock advanced tracks.';
+    const nextActionHinglishWhy = contextData?.nextMove?.hinglishWhy || 'Foundational skills complete karke agle level ke liye prepare hone ke liye.';
+    const nextRoute = contextData?.nextMove?.stepLink || (contextData?.nextMove?.actionType === 'LAB' ? '/linux-lab' : '/modules');
+
+    if (isWhereAmIQuery) {
+      if (isHinglish) {
+        fullText = `Aapka current status aur location summary:
+
+**Current Role:**
+${roleName}
+
+**Current Level:**
+Level ${currentLevel} (${rank})
+
+**Current Module:**
+${currentCourse} (${currentModule})
+
+**Progress:**
+${progressPct}% complete (${xp} XP)
+
+**Next Step:**
+${nextActionTitle}
+
+[ACTION:RESUME_LEARNING:${nextRoute}]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+        summary = `Aap Level ${currentLevel} par ${currentCourse} mein ho. Next step: ${nextActionTitle}.`;
+      } else {
+        fullText = `Here is your current learning status:
+
+**Current Role:**
+${roleName}
+
+**Current Level:**
+Level ${currentLevel} (${rank})
+
+**Current Module:**
+${currentCourse} (${currentModule})
+
+**Progress:**
+${progressPct}% complete (${xp} XP)
+
+**Next Step:**
+${nextActionTitle}
+
+[ACTION:RESUME_LEARNING:${nextRoute}]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+        summary = `You are at Level ${currentLevel} in ${currentCourse}. Next step: ${nextActionTitle}.`;
+      }
+    } else {
+      const hasRole = contextData?.targetRole && contextData.targetRole !== 'beginner';
+
+      if (!hasRole && (!contextData?.careerPath || contextData?.careerPath === 'Cybersecurity Beginner')) {
+        if (isHinglish) {
+          fullText = `Main aapke saath hoon! Sabse pehle apna target cybersecurity role select karte hain.
+
+Aapka best next step:
+🎯 **Choose Your Career Track**
+
+**Kyunki:**
+Track select karne se aapke labs, roadmaps, aur daily exercises aapke specific goal ke according align ho jayenge.
+
+[ACTION:OPEN_LEARNING_PATH:/learning-path]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+          summary = `Select your career track to get personalized guidance.`;
+        } else {
+          fullText = `I'm with you! To give you the best path, let's select your target cybersecurity role.
+
+Your best next step is:
+🎯 **Choose Your Career Track**
+
+**Why:**
+Selecting a track tailors your labs, roadmaps, and daily exercises to your career goals.
+
+[ACTION:OPEN_LEARNING_PATH:/learning-path]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+          summary = `Select your target career track to start your tailored path.`;
+        }
+      } else {
+        if (isHinglish) {
+          fullText = `Main aapke saath hoon. Aap abhi Level ${currentLevel} par **${currentCourse}** sikh rahe ho.
+
+Sab kuch ek saath choose karne ki zaroorat nahi hai.
+
+Aapka best next step:
+🎯 **${nextActionTitle}**
+
+**Kyunki:**
+${nextActionHinglishWhy}
+
+[ACTION:RESUME_LEARNING:${nextRoute}]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+          summary = `Recommended next step: ${nextActionTitle}.`;
+        } else {
+          fullText = `I'm with you. You're currently at Level ${currentLevel} in **${currentCourse}**.
+
+Don't worry about choosing everything at once.
+
+Your best next step is:
+🎯 **${nextActionTitle}**
+
+**Why:**
+${nextActionReason}
+
+[ACTION:RESUME_LEARNING:${nextRoute}]
+[ACTION:OPEN_ROADMAP:/roadmap]`;
+          summary = `Recommended next step: ${nextActionTitle}.`;
+        }
+      }
+    }
+  } 
   // 1. CAREER_LEARNING_INTENT ("I want to learn ethical hacking", "Mujhe ethical hacking sikhni hai")
-  if (intentResult.intent === 'CAREER_LEARNING_INTENT') {
+  else if (intentResult.intent === 'CAREER_LEARNING_INTENT') {
     if (isHinglish) {
       fullText = `Bilkul! Main aapko Ethical Hacking ki learning path par lead karunga.
 
