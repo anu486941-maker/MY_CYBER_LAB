@@ -274,7 +274,7 @@ export function detectAmanIntent(
   const lower = text.toLowerCase().trim();
   const cleanLower = lower.replace(/[?!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
 
-  // 1. PRIORITY 1 — CASUAL CONVERSATION (Detect first to prevent context hijacking)
+  // 1. PRIORITY 1 — CASUAL CONVERSATION & EMOTIONAL/INTERACTIVE (Detect first to prevent context hijacking)
   const isGreeting = 
     lower === 'hi' ||
     lower === 'hello' ||
@@ -285,12 +285,13 @@ export function detectAmanIntent(
     cleanLower === 'hello aman how are you' ||
     cleanLower === 'hi aman how are you' ||
     cleanLower === 'hey aman how are you' ||
-    /^(hello|hi|hey|greetings|yo|hola)(\s+aman)?(\s+how\s+(are\s+you|r\s+u))?$/i.test(cleanLower) ||
+    /^(hello|hi|hey|greetings|yo|hola|sup|heyy|hiii)(\s+aman)?(\s+how\s+(are\s+you|r\s+u|is\s+it\s+going))?$/i.test(cleanLower) ||
     lower === 'hiii' ||
     lower === 'hy' ||
     lower === 'hyy' ||
     lower === 'yo' ||
     lower === 'hola' ||
+    lower === 'sup' ||
     lower === 'greetings' ||
     lower === 'greetings aman';
 
@@ -316,24 +317,61 @@ export function detectAmanIntent(
     lower === 'kya kar rahe ho?' ||
     lower === 'kya kar rha h' ||
     lower === 'kaise chal raha hai' ||
-    lower === 'kaise chal raha hai?';
+    lower === 'kaise chal raha hai?' ||
+    lower === 'thik hu' ||
+    lower === 'theek hu' ||
+    lower === 'sab mast' ||
+    lower === 'mast';
 
   const isStatusCheckOrCasual =
-    lower.startsWith('how are you') ||
-    lower.startsWith('how r u') ||
-    lower.startsWith('are you okay') ||
-    lower.startsWith('what are you doing') ||
-    lower.startsWith('what r u doing') ||
-    lower.startsWith('what is up') ||
-    lower.startsWith('whats up') ||
-    lower.startsWith("what's up") ||
-    lower === 'good morning' ||
-    lower === 'good evening' ||
-    lower === 'good afternoon' ||
-    lower === 'good night' ||
-    lower.startsWith('nice to meet you') ||
-    lower.startsWith('nice meeting you') ||
-    lower.includes('tell me a joke');
+    cleanLower.startsWith('how are you') ||
+    cleanLower.startsWith('how are u') ||
+    cleanLower.startsWith('how r u') ||
+    cleanLower.startsWith('how r you') ||
+    cleanLower.startsWith('how is it going') ||
+    cleanLower.startsWith("how s it going") ||
+    cleanLower.startsWith("how's it going") ||
+    cleanLower.startsWith('how do you do') ||
+    cleanLower.startsWith('are you okay') ||
+    cleanLower.startsWith('are you ok') ||
+    cleanLower.startsWith('what are you doing') ||
+    cleanLower.startsWith('what are u doing') ||
+    cleanLower.startsWith('what r u doing') ||
+    cleanLower.startsWith('what r you doing') ||
+    cleanLower.startsWith('what is up') ||
+    cleanLower.startsWith('whats up') ||
+    cleanLower.startsWith("what's up") ||
+    cleanLower.startsWith('who are you') ||
+    cleanLower.startsWith('who are u') ||
+    cleanLower.startsWith('what are you') ||
+    cleanLower.startsWith('what are u') ||
+    cleanLower === 'good morning' ||
+    cleanLower === 'good evening' ||
+    cleanLower === 'good afternoon' ||
+    cleanLower === 'good night' ||
+    cleanLower.startsWith('nice to meet you') ||
+    cleanLower.startsWith('nice meeting you') ||
+    cleanLower.includes('tell me a joke') ||
+    cleanLower === "i m good" ||
+    cleanLower === "i am good" ||
+    cleanLower === "im good" ||
+    cleanLower === "i m bored" ||
+    cleanLower === "i am bored" ||
+    cleanLower === "im bored" ||
+    cleanLower === "i m fine" ||
+    cleanLower === "i am fine" ||
+    cleanLower === "im fine";
+
+  const isRudeOrFrustrated =
+    lower.includes('fuck') ||
+    lower.includes('stfu') ||
+    lower.includes('shut up') ||
+    lower.includes('screw you') ||
+    lower.includes('you suck') ||
+    lower.includes('idiot') ||
+    lower.includes('stupid') ||
+    lower.includes('useless') ||
+    lower.includes('dumb');
 
   const isQuickPoliteOrAcknowledge =
     lower === 'thanks' ||
@@ -351,7 +389,9 @@ export function detectAmanIntent(
     lower === 'no problem' ||
     lower === 'no probs' ||
     lower === 'welcome' ||
-    lower === 'you are welcome';
+    lower === 'you are welcome' ||
+    lower === 'got it' ||
+    lower === 'understood';
 
   const isGoodbye =
     lower === 'bye' ||
@@ -361,7 +401,7 @@ export function detectAmanIntent(
     lower === 'see u' ||
     lower === 'chalo bye';
 
-  if (isGreeting || isHinglishGreeting || isStatusCheckOrCasual || isQuickPoliteOrAcknowledge || isGoodbye) {
+  if (isGreeting || isHinglishGreeting || isStatusCheckOrCasual || isRudeOrFrustrated || isQuickPoliteOrAcknowledge || isGoodbye) {
     return { 
       intent: 'CONVERSATION',
       useRoomContext: false,
@@ -502,7 +542,9 @@ export function detectAmanIntent(
     labelRole = 'SOC Analyst';
   } else if (
     lower.includes('network security') ||
-    lower.includes('networking security')
+    lower.includes('networking security') ||
+    lower.includes('networking') ||
+    lower.includes('network')
   ) {
     canonicalRole = 'NETWORK_SECURITY';
     labelRole = 'Network Security Specialist';

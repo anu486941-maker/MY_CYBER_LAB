@@ -75,40 +75,70 @@ export class AIProviderRouter {
 
   private getExecutionPlan(): AIProvider[] {
     const mode = this.getAIMode();
+    const isProd = AIRequestPolicy.isProduction();
+    const isOllamaEnabled = AIRequestPolicy.isOllamaConfigured();
     const plan: AIProvider[] = [];
 
     switch (mode) {
       case 'LOCAL_ONLY':
-        plan.push(this.primaryLocalProvider);
-        plan.push(this.fallbackLocalProvider);
+        if (isOllamaEnabled && this.primaryLocalProvider.isAvailable()) {
+          plan.push(this.primaryLocalProvider);
+        }
+        if (isOllamaEnabled && this.fallbackLocalProvider.isAvailable()) {
+          plan.push(this.fallbackLocalProvider);
+        }
         plan.push(this.deterministicProvider);
         break;
 
       case 'CLOUD_DISABLED':
-        plan.push(this.primaryLocalProvider);
-        plan.push(this.fallbackLocalProvider);
+        if (isOllamaEnabled && this.primaryLocalProvider.isAvailable()) {
+          plan.push(this.primaryLocalProvider);
+        }
+        if (isOllamaEnabled && this.fallbackLocalProvider.isAvailable()) {
+          plan.push(this.fallbackLocalProvider);
+        }
         plan.push(this.deterministicProvider);
         break;
 
       case 'CLOUD_OPTIONAL':
-        // Try Cloud first if available, then fallback to Local & Deterministic
+        // Production standard: Cloud Gemini first -> Local Ollama (if configured) -> Deterministic
         if (this.cloudProvider.isAvailable()) {
           plan.push(this.cloudProvider);
         }
-        plan.push(this.primaryLocalProvider);
-        plan.push(this.fallbackLocalProvider);
+        if (isOllamaEnabled && this.primaryLocalProvider.isAvailable()) {
+          plan.push(this.primaryLocalProvider);
+        }
+        if (isOllamaEnabled && this.fallbackLocalProvider.isAvailable()) {
+          plan.push(this.fallbackLocalProvider);
+        }
         plan.push(this.deterministicProvider);
         break;
 
       case 'LOCAL_FIRST':
       default:
-        // Local AI -> Fallback Local -> Deterministic Engine -> Cloud (if available)
-        plan.push(this.primaryLocalProvider);
-        plan.push(this.fallbackLocalProvider);
-        plan.push(this.deterministicProvider);
+        // In production: if Ollama is not configured/available, directly use Cloud Gemini -> Deterministic
+        if (!isProd && isOllamaEnabled) {
+          if (this.primaryLocalProvider.isAvailable()) {
+            plan.push(this.primaryLocalProvider);
+          }
+          if (this.fallbackLocalProvider.isAvailable()) {
+            plan.push(this.fallbackLocalProvider);
+          }
+        }
         if (this.cloudProvider.isAvailable()) {
           plan.push(this.cloudProvider);
         }
+        // In local development, if cloud is also attempted after local
+        if (isProd && isOllamaEnabled) {
+          if (this.primaryLocalProvider.isAvailable()) {
+            plan.push(this.primaryLocalProvider);
+          }
+          if (this.fallbackLocalProvider.isAvailable()) {
+            plan.push(this.fallbackLocalProvider);
+          }
+        }
+        // Deterministic engine is always available as the ultimate resilient fallback
+        plan.push(this.deterministicProvider);
         break;
     }
 

@@ -14,6 +14,7 @@ import {
   AIStreamChunk
 } from './AIProvider';
 import { AIHealthTracker } from './AIHealthTracker';
+import { AIRequestPolicy } from './AIRequestPolicy';
 
 export class OllamaProvider implements AIProvider {
   public readonly providerName = 'LOCAL_OLLAMA';
@@ -44,6 +45,16 @@ export class OllamaProvider implements AIProvider {
   }
 
   public isAvailable(): boolean {
+    if (!AIRequestPolicy.isOllamaConfigured()) {
+      return false;
+    }
+    // If not yet verified or previously failed, check connectivity status
+    if (this.isConnected === false) {
+      // If we know it's disconnected and health check failed recently, skip immediately
+      if (Date.now() - this.lastHealthCheckTime < 60000) {
+        return false;
+      }
+    }
     return this.healthTracker.isAvailable(this.getProviderKey());
   }
 
@@ -52,6 +63,16 @@ export class OllamaProvider implements AIProvider {
   }
 
   public async healthCheck(): Promise<AIProviderHealthInfo> {
+    if (!AIRequestPolicy.isOllamaConfigured()) {
+      return {
+        status: 'DISABLED',
+        providerName: this.providerName,
+        modelName: this.modelName,
+        failureCount: 0,
+        reason: 'Ollama is disabled in production / cloud runtime environment'
+      };
+    }
+
     const now = Date.now();
     // Cache health check for 10 seconds
     if (this.isConnected !== null && now - this.lastHealthCheckTime < 10000) {
@@ -64,7 +85,7 @@ export class OllamaProvider implements AIProvider {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 1200);
+      const timeoutId = setTimeout(() => controller.abort(), 600);
 
       const resp = await fetch(`${this.baseUrl}/api/version`, {
         signal: controller.signal
@@ -96,7 +117,7 @@ export class OllamaProvider implements AIProvider {
     } catch (err: any) {
       this.isConnected = false;
       this.lastHealthCheckTime = now;
-      this.healthTracker.recordFailure(this.getProviderKey(), err?.message || 'Connection refused');
+      this.healthTracker.recordFailure(this.getProviderKey(), err?.message || 'Connection refused', 60000);
       return {
         status: 'TEMPORARILY_UNAVAILABLE',
         providerName: this.providerName,

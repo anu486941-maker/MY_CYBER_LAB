@@ -53,6 +53,7 @@ export interface AmanExecutionContext {
   setActiveCareerTrack?: (track: 'ETHICAL_HACKER' | 'SOC_ANALYST') => void;
   resetAllProgress?: () => void;
   addXp?: (amount: number, reason?: string) => void;
+  recentCommands?: string[];
 
   // Curricular references
   curriculum?: any[];

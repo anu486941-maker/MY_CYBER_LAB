@@ -23,13 +23,16 @@ export class AmanContextCache {
   public static async getParallelContext(
     executionContext: AmanExecutionContext,
     activeMode: string = 'TEACH',
-    recentCommands: string[] = []
+    recentCommands: string[] = [],
+    currentQuestion?: string
   ): Promise<CompactLearnerContext> {
     const now = Date.now();
     const currentRoute = executionContext.currentRoute || '/dashboard';
 
-    // Check valid cache entry
+    // Check valid cache entry (bypass if question has pronoun needing immediate resolution)
+    const hasRelativePronoun = currentQuestion && /\b(this|it|that|the error|my command)\b/i.test(currentQuestion);
     if (
+      !hasRelativePronoun &&
       this.cachedEntry &&
       (now - this.cachedEntry.timestamp < this.TTL_MS) &&
       this.cachedEntry.route === currentRoute
@@ -50,7 +53,10 @@ export class AmanContextCache {
       evidenceRes,
       currentRoute,
       activeMode,
-      recentCommands
+      recentCommands,
+      undefined,
+      undefined,
+      currentQuestion
     );
 
     this.cachedEntry = {

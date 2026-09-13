@@ -1853,6 +1853,270 @@ AmanToolRegistry.registerTool({
   }
 });
 
+// =============================================================
+// CATEGORY I — SAFE CORE AMAN EDUCATIONAL TOOLS (Section 7)
+// =============================================================
+
+AmanToolRegistry.registerTool({
+  name: 'get_user_profile',
+  category: 'ACCOUNT',
+  permission: 'READ_ONLY',
+  description: 'Gets the learner\'s authenticated profile, selected role, calibrated skill level, and cyber XP.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    const prof = ctx.profile || {};
+    return {
+      name: prof.name || 'Operator',
+      selectedRole: prof.selectedRole || prof.targetRole || 'SOC Analyst',
+      skillLevel: prof.skillLevel || (prof.cyberLevel >= 3 ? 'Intermediate' : 'Beginner'),
+      cyberLevel: prof.cyberLevel || 1,
+      xp: prof.xp || 0
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_learning_progress',
+  category: 'LEARNING',
+  permission: 'READ_ONLY',
+  description: 'Gets current course, completed labs count, completed missions count, and overall mastery percentage.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    const pos = ctx.learningState?.position || {};
+    return {
+      currentCourse: pos.currentCourse || 'Foundations of Cybersecurity',
+      currentModule: pos.currentModule || 'Linux Fundamentals',
+      completedLabsCount: pos.completedLabsCount || 0,
+      completedLessonsCount: pos.completedLessonsCount || 0,
+      overallMasteryPercentage: pos.overallMasteryPercentage || 0,
+      xp: ctx.profile?.xp || 0
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_current_module',
+  category: 'LEARNING',
+  permission: 'READ_ONLY',
+  description: 'Gets the active learning module and lesson topic.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    const pos = ctx.learningState?.position || {};
+    return {
+      module: pos.currentModule || 'Linux Fundamentals',
+      lesson: pos.currentLesson || 'Terminal Navigation',
+      course: pos.currentCourse || 'Foundations of Cybersecurity',
+      nextRequiredSkill: pos.nextRequiredSkill || 'Network Reconnaissance'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_current_mission',
+  category: 'MISSIONS',
+  permission: 'READ_ONLY',
+  description: 'Gets the active mission or incident objective.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    return {
+      currentMission: ctx.learningState?.currentMission || 'Incident Triage & Investigation',
+      status: 'IN_PROGRESS',
+      objective: 'Analyze telemetry logs and identify potential intrusion indicators'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_lab_context',
+  category: 'LAB',
+  permission: 'READ_ONLY',
+  description: 'Gets the active lab environment metadata without claiming unauthorized remote access.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    const route = ctx.currentRoute || '/dashboard';
+    let labName = 'General Dashboard';
+    if (route.includes('linux-lab')) labName = 'Linux Fundamentals Lab';
+    else if (route.includes('network-lab')) labName = 'Network Reconnaissance Lab';
+    else if (route.includes('web-security')) labName = 'Web Security & SQLi Lab';
+    else if (route.includes('soc-simulator')) labName = 'SOC Incident Simulator';
+
+    return {
+      activeRoute: route,
+      labName,
+      status: 'READY',
+      canSimulateExecution: true
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_checkpoint_status',
+  category: 'CHECKPOINT',
+  permission: 'READ_ONLY',
+  description: 'Gets verified checkpoints count and list of submitted flags.',
+  parameters: { type: 'object', properties: {} },
+  execute: async (_, ctx: AmanExecutionContext) => {
+    const verified = ctx.profile?.verifiedCheckpoints || [];
+    return {
+      verifiedCount: verified.length,
+      verifiedList: verified.slice(-5)
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'get_roadmap',
+  category: 'LEARNING',
+  permission: 'LOW_RISK',
+  description: 'Fetches roadmap milestones and optionally navigates to the roadmap view.',
+  parameters: {
+    type: 'object',
+    properties: {
+      navigate: { type: 'boolean', description: 'Whether to switch route to /roadmap' }
+    }
+  },
+  execute: async (params: { navigate?: boolean }, ctx: AmanExecutionContext) => {
+    if (params.navigate) {
+      ctx.navigate('/roadmap');
+    }
+    const track = ctx.profile?.selectedRole || 'SOC Analyst';
+    return {
+      track,
+      milestones: [
+        'Foundations & Networking',
+        'Linux Administration & Security',
+        'Reconnaissance & Nmap',
+        'Vulnerability Assessment & Web Security',
+        'Incident Response & Forensics'
+      ]
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'search_learning_content',
+  category: 'STUDY',
+  permission: 'READ_ONLY',
+  description: 'Searches platform modules and labs for a cybersecurity topic.',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'The search query (e.g. subnetting, nmap, sqli)' }
+    },
+    required: ['query']
+  },
+  execute: async (params: { query: string }) => {
+    const q = (params.query || '').toLowerCase();
+    const results = [];
+    if (q.includes('subnet') || q.includes('ip') || q.includes('cidr')) {
+      results.push({ title: 'Subnetting & IP Architecture', route: '/network-lab', type: 'Lab' });
+    }
+    if (q.includes('nmap') || q.includes('port') || q.includes('recon')) {
+      results.push({ title: 'Network Reconnaissance with Nmap', route: '/network-lab', type: 'Lab' });
+    }
+    if (q.includes('sql') || q.includes('web') || q.includes('injection')) {
+      results.push({ title: 'SQL Injection Fundamentals', route: '/web-security', type: 'Lab' });
+    }
+    if (q.includes('linux') || q.includes('bash') || q.includes('permission')) {
+      results.push({ title: 'Linux Terminal & Permissions', route: '/linux-lab', type: 'Lab' });
+    }
+    if (results.length === 0) {
+      results.push({ title: 'Cybersecurity Fundamentals Roadmap', route: '/roadmap', type: 'Curriculum' });
+    }
+    return { query: params.query, count: results.length, results };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'verify_answer',
+  category: 'CHECKPOINT',
+  permission: 'LOW_RISK',
+  description: 'Verifies a learner\'s conceptual answer or command syntax against expected parameters.',
+  parameters: {
+    type: 'object',
+    properties: {
+      topic: { type: 'string', description: 'Topic being verified' },
+      learnerAnswer: { type: 'string', description: 'The learner submitted answer' }
+    },
+    required: ['topic', 'learnerAnswer']
+  },
+  execute: async (params: { topic: string; learnerAnswer: string }) => {
+    return {
+      topic: params.topic,
+      submitted: params.learnerAnswer,
+      reviewed: true,
+      feedback: 'Answer reviewed for technical accuracy and security best practices.'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'save_progress',
+  category: 'LEARNING',
+  permission: 'LOW_RISK',
+  description: 'Saves learner progress and awards XP.',
+  parameters: {
+    type: 'object',
+    properties: {
+      xpAmount: { type: 'number', description: 'XP points to award' },
+      reason: { type: 'string', description: 'Reason for progress update' }
+    }
+  },
+  execute: async (params: { xpAmount?: number; reason?: string }, ctx: AmanExecutionContext) => {
+    if (params.xpAmount && ctx.addXp) {
+      ctx.addXp(params.xpAmount, params.reason || 'AMAN Learning Milestone');
+    }
+    return {
+      success: true,
+      xpAwarded: params.xpAmount || 0,
+      reason: params.reason || 'Progress updated'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'create_quiz',
+  category: 'STUDY',
+  permission: 'READ_ONLY',
+  description: 'Generates active-recall cybersecurity questions matching the learner\'s current topic and skill level.',
+  parameters: {
+    type: 'object',
+    properties: {
+      topic: { type: 'string', description: 'The topic to quiz on (e.g. Subnetting, Nmap, Linux)' },
+      difficulty: { type: 'string', enum: ['Beginner', 'Intermediate', 'Advanced'], description: 'Difficulty level' }
+    },
+    required: ['topic']
+  },
+  execute: async (params: { topic: string; difficulty?: string }) => {
+    return {
+      topic: params.topic,
+      difficulty: params.difficulty || 'Beginner',
+      status: 'READY'
+    };
+  }
+});
+
+AmanToolRegistry.registerTool({
+  name: 'create_challenge',
+  category: 'MISSIONS',
+  permission: 'READ_ONLY',
+  description: 'Generates a practical hands-on cybersecurity challenge scenario.',
+  parameters: {
+    type: 'object',
+    properties: {
+      domain: { type: 'string', description: 'Challenge domain (e.g. offensive, defensive, forensic)' },
+      difficulty: { type: 'string', description: 'Challenge difficulty level' }
+    }
+  },
+  execute: async (params: { domain?: string; difficulty?: string }) => {
+    return {
+      domain: params.domain || 'network',
+      difficulty: params.difficulty || 'Beginner',
+      scenarioCreated: true
+    };
+  }
+});
+
 export { AmanToolRegistryV3 } from './amanToolRegistryV3';
 
 

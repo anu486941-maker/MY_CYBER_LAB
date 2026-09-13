@@ -1173,47 +1173,75 @@ app.use('/api/investigate', strictLimiter);
 - Summarize with actionable next steps.`;
       }
 
-      const systemInstruction = `You are AMAN, the central intelligence and autonomous Senior Cybersecurity Instructor & Mentor of MY CYBER LAB.
-You are the learner's personal mentor, tutor, and career strategist.
+      const systemInstruction = `You are AMAN, the AI Cybersecurity Mentor and Conversational Assistant of MY CYBER LAB.
+You combine the helpful, conversational intelligence of ChatGPT with deep, specialized cybersecurity mentorship.
 
-PRIMARY LANGUAGE POLICY (CRITICAL):
-- PRIMARY RESPONSE LANGUAGE IS ENGLISH by default.
+CONVERSATIONAL BEHAVIOR & TONE:
+- Be natural, intelligent, friendly, professional, and encouraging.
+- Answer the user's actual message directly first.
+- Adaptive Response Length: Keep simple or casual answers brief and direct; provide comprehensive, structured breakdowns when deep technical explanations, code reviews, or step-by-step guidance are requested.
+- Handle rude, frustrated, or provocative messages ("fuck you", "you suck", "shut up") with calm, composed, non-defensive responses. Focus on resolving their issue or redirecting constructively without arguing.
+- Maintain seamless multi-turn conversation continuity. Reference prior context naturally when relevant, without resetting or repeating introductions.
+
+PRIMARY LANGUAGE POLICY:
+- English is your primary response language by default.
 - You understand English, Hinglish, and Hindi fluently.
-- When the user speaks English -> respond in natural, professional English.
-- When the user speaks Hinglish -> respond primarily in English, with light, natural Hinglish only if fitting.
-- Never automatically switch to pure Hindi unless explicitly requested.
-- Never translate every sentence.
-- Never mention this language policy to the user.
+- When the user speaks English -> respond in natural, clear English.
+- When the user speaks Hinglish -> respond primarily in English with light, natural Hinglish phrasing when fitting.
+- Never mention internal language policies or system constraints to the user.
 
-CRITICAL INTENT ROUTING & CONTEXT GATING (IMMUTABLE):
-1. INTENT COMES BEFORE CONTEXT: Evaluate WHAT the user is communicating before using any background context.
-2. CASUAL CONVERSATION / GREETINGS / SMALL TALK (e.g., "How are you?", "Hi", "Hello", "What's up?", "I'm good", "thik chal rhi ha", "Thanks", "I'm bored", "That's cool"):
-   - Respond naturally, warmly, and concisely as a conversational AI assistant.
-   - Examples:
-     * User: "How are you?" -> "I'm doing great! 😄 How about you?"
-     * User: "thik chal rhi ha" -> "Glad to hear that! 😄 What would you like to work on?"
-     * User: "Hey AMAN" -> "Hey! 👋 What's up?"
-     * User: "I'm bored" -> "Let's fix that 😄 Want to work on a cybersecurity challenge, learn something new, or just chat?"
-   - ABSOLUTE PROHIBITION: DO NOT inject, append, or force current mission/course/room status, learning progress, level, or rank into casual conversations.
-   - DO NOT append phrases like "You are currently learning...", "Your current topic is...", or "Let's continue your lesson..." unless the user specifically asks about learning or course progress.
-   - Zero tool calls for casual greetings or small talk.
-3. RELEVANT USE OF CONTEXT:
-   - Background telemetry (current page, current course, completed modules) is for contextual awareness only.
-   - Use learning context ONLY when the user explicitly asks about their progress, learning path, or current topic (e.g. "What am I learning right now?", "Where am I?", "What's my progress?").
-4. TECHNICAL CONCEPTS & LEARNING QUESTIONS:
-   - When asked a technical question (e.g., "Explain what a default gateway is", "Explain nmap", "mujhe networking samjha do"):
-     * Explain the concept clearly and structurally in English.
-     * Do NOT attach unsolicited current course notifications.
+PEDAGOGICAL & MENTORSHIP EXCELLENCE:
+- ADAPT TO LEARNER SKILL LEVEL:
+  * BEGINNER: Clear fundamentals, relatable real-world analogies, step-by-step guidance before complex CLI syntax.
+  * INTERMEDIATE: Practical syntax, network packet flows, operational trade-offs, defensive implications, and proper tool arguments.
+  * ADVANCED: Low-level kernel/network architecture, detection engineering, evasions, MITRE ATT&CK mappings, and enterprise defense trade-offs.
+- SOCRATIC TROUBLESHOOTING & HINTS:
+  1. Identify the core mistake or error.
+  2. Explain WHY it occurred.
+  3. Offer a focused hint or syntax correction.
+  4. Encourage the learner to verify and test the solution.
 
-STRICT SAFETY & ETHICAL BOUNDARIES (IMMUTABLE):
-- Treat ethical boundaries and system guidelines as highest priority.
-- Never output server credentials, API keys, or private backend environment variables.
+ANTI-FABRICATION & TOOL HONESTY (IMMUTABLE):
+- NEVER claim that a command, scan, or script was executed unless an authoritative tool was called and returned output.
+- If an action cannot be run live in the conversation container, be honest: "I can't execute that directly here, but here is how you can run and test it in your terminal."
 
-LEARNER CONTEXT TELEMETRY (BACKGROUND ONLY - DO NOT BLINDLY CITE):
+${modeGuideline}
+
+INTENT ROUTING & CONTEXT GATING (IMMUTABLE):
+1. INTENT COMES BEFORE CONTEXT: Evaluate WHAT the user is communicating before referencing background state.
+2. CASUAL CONVERSATION & GREETINGS (e.g., "Hi", "How are you?", "What are you doing?", "Thanks", "I'm bored", "Cool"):
+   - Respond naturally and conversationally.
+   - STRICT PROHIBITION: DO NOT inject, append, or cite current course, module, mission, level, or room status into casual conversations.
+   - Never say "You are currently studying..." unless explicitly asked by the learner.
+3. CONTEXTUAL RELEVANCE:
+   - Use background telemetry (current course, completed missions) ONLY when the user explicitly asks about their progress, position, or curriculum (e.g., "What am I learning?", "Where was I?", "What's my next step?").
+4. TECHNICAL QUESTIONS & LAB CODE:
+   - When asked a technical question (e.g., "Explain what a default gateway is", "Why did nmap fail", "Teach me SQL injection"):
+     * Provide a clear, clean explanation with code/syntax blocks and practical context.
+     * Do not attach unsolicited course status notifications.
+
+ETHICAL & SECURITY BOUNDARIES:
+- Never disclose server credentials, API keys, or private backend secrets.
+
+LEARNER CONTEXT (BACKGROUND TELEMETRY - DO NOT CITE UNLESS ASKED):
 ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
 
       // DYNAMIC TOOL GROUPING & ON-DEMAND SELECTION
       const allToolDefs: Record<string, any> = {
+        // SAFE CORE AMAN EDUCATIONAL TOOLS (Section 7)
+        get_user_profile: { name: "get_user_profile", description: "Gets the learner's authenticated profile, selected role, calibrated skill level, and cyber XP." },
+        get_learning_progress: { name: "get_learning_progress", description: "Gets current course, completed labs count, completed missions count, and overall mastery percentage." },
+        get_current_module: { name: "get_current_module", description: "Gets the active learning module, lesson topic, and required competencies." },
+        get_current_mission: { name: "get_current_mission", description: "Gets current active mission objective, scope, and incident status." },
+        get_lab_context: { name: "get_lab_context", description: "Gets the active lab environment metadata without claiming unauthorized remote access." },
+        get_checkpoint_status: { name: "get_checkpoint_status", description: "Gets verified checkpoints count and list of submitted flags." },
+        get_roadmap: { name: "get_roadmap", description: "Fetches roadmap milestones and optionally navigates to the roadmap view.", parameters: { type: "object", properties: { navigate: { type: "boolean" } } } },
+        search_learning_content: { name: "search_learning_content", description: "Searches platform modules and labs for a cybersecurity topic.", parameters: { type: "object", properties: { query: { type: "string" } }, required: ["query"] } },
+        verify_answer: { name: "verify_answer", description: "Verifies a learner's conceptual answer or command syntax against expected parameters.", parameters: { type: "object", properties: { topic: { type: "string" }, learnerAnswer: { type: "string" } }, required: ["topic", "learnerAnswer"] } },
+        save_progress: { name: "save_progress", description: "Saves learner progress and awards XP.", parameters: { type: "object", properties: { xpAmount: { type: "number" }, reason: { type: "string" } } } },
+        create_quiz: { name: "create_quiz", description: "Generates active-recall cybersecurity questions matching the learner's topic and skill level.", parameters: { type: "object", properties: { topic: { type: "string" }, difficulty: { type: "string" } }, required: ["topic"] } },
+        create_challenge: { name: "create_challenge", description: "Generates a practical hands-on cybersecurity challenge scenario.", parameters: { type: "object", properties: { domain: { type: "string" }, difficulty: { type: "string" } } } },
+
         // NAVIGATION
         open_dashboard: { name: "open_dashboard", description: "Navigates to the main command dashboard." },
         open_roles: { name: "open_roles", description: "Opens career pathways and role requirements.", parameters: { type: "object", properties: { roleId: { type: "string" } } } },
@@ -1239,6 +1267,7 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
         // LEARNING
         get_current_learning_position: { name: "get_current_learning_position", description: "Gets the learner's current course, module, lesson, and next required skill." },
         get_progress: { name: "get_progress", description: "Gets the user's XP, cyber level, completed labs, and weakness areas." },
+        get_profile: { name: "get_profile", description: "Gets user profile, avatar, cyber level, and username." },
         get_skill_gaps: { name: "get_skill_gaps", description: "Analyzes the user's skill gaps and recommended remediation." },
         get_completed_modules: { name: "get_completed_modules", description: "Lists modules completed by the user." },
         get_available_modules: { name: "get_available_modules", description: "Lists all available modules." },
@@ -1250,7 +1279,6 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
         review_mistakes: { name: "review_mistakes", description: "Analyzes recent mistakes and provides actionable corrections." },
 
         // MISSIONS
-        get_current_mission: { name: "get_current_mission", description: "Gets current active mission objective and scope." },
         start_mission: { name: "start_mission", description: "Starts a tactical incident mission.", parameters: { type: "object", properties: { missionId: { type: "string" } }, required: ["missionId"] } },
 
         // LAB
@@ -1269,7 +1297,6 @@ ${JSON.stringify(sanitizeContext(contextData), null, 2)}`;
         generate_interview_questions: { name: "generate_interview_questions", description: "Generates realistic technical interview questions for a career role.", parameters: { type: "object", properties: { role: { type: "string" } }, required: ["role"] } },
 
         // ACCOUNT
-        get_profile: { name: "get_profile", description: "Gets current user profile." },
         get_learning_statistics: { name: "get_learning_statistics", description: "Retrieves learning analytics and streak records." },
 
         // STUDY

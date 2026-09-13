@@ -63,8 +63,6 @@ export const WelcomeSignInPage: React.FC = () => {
 
       try {
         await signUpWithEmail(email.trim(), password, name.trim());
-        setAuthMode('verify');
-        setVerificationSent(true);
       } catch (err: any) {
         setLocalError(err.message || 'Failed to create account. Please try again.');
       }

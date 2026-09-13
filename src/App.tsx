@@ -143,13 +143,21 @@ const AppContent: React.FC = () => {
             </Suspense>
           </main>
         ) : isProfileIncomplete ? (
-          /* Lock into Onboarding Wizard */
-          <main className="flex-1 flex items-center justify-center p-4">
-            <Suspense fallback={<PageLoadingFallback />}>
-              <OnboardingPage />
-            </Suspense>
-            <AmanVoiceGuide />
-          </main>
+          /* Lock into Onboarding Wizard with explicit /onboarding route */
+          <Routes>
+            <Route
+              path="/onboarding"
+              element={
+                <main className="flex-1 flex items-center justify-center p-4">
+                  <Suspense fallback={<PageLoadingFallback />}>
+                    <OnboardingPage />
+                  </Suspense>
+                  <AmanVoiceGuide />
+                </main>
+              }
+            />
+            <Route path="*" element={<Navigate to="/onboarding" replace />} />
+          </Routes>
         ) : (
           /* Standard Academy Experience */
           <>
@@ -164,6 +172,7 @@ const AppContent: React.FC = () => {
                       <RoleGuard>
                         <Routes>
                           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                          <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
                           <Route path="/dashboard" element={<DashboardPage />} />
                           <Route path="/select-role" element={<RoleSelectionPage />} />
                           <Route path="/role-selection" element={<RoleSelectionPage />} />

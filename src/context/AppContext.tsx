@@ -1048,7 +1048,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...prev,
             ...data.profile,
             name: cleanName,
-            codename: data.profile.codename || prev.codename
+            codename: data.profile.codename || prev.codename,
+            onboardingCompleted: data.profile.onboardingCompleted ?? false
           }));
         }
 
@@ -1141,9 +1142,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.warn('Could not load videoProgress subcollection:', vErr);
         }
       } else {
-        // Document doesn't exist yet, push initial local data to Firestore
+        // Genuinely NEW USER: Document does not exist yet in Firestore.
+        // Explicitly initialize clean new user profile with onboardingCompleted: false
         hasLoadedRemoteRef.current = true;
-        await syncToCloud(user);
+        const cleanName = user.displayName || (user.email ? user.email.split('@')[0] : '') || '';
+        const freshProfile: UserProfile = {
+          ...INITIAL_USER_PROFILE,
+          name: cleanName,
+          codename: cleanName ? cleanName.toUpperCase().replace(/\s+/g, '-').slice(0, 14) : 'OPERATOR-01',
+          onboardingCompleted: false,
+          selectedRole: '',
+          targetRole: '',
+          skillLevel: '',
+          emailVerified: user.emailVerified
+        };
+        setProfile(freshProfile);
+        try {
+          localStorage.setItem('mcl_profile', JSON.stringify(freshProfile));
+        } catch {}
+
+        // Persist initial clean state for new user to Firestore
+        await setDoc(userRef, {
+          profile: freshProfile,
+          updatedAt: serverTimestamp(),
+          email: user.email || '',
+          displayName: cleanName
+        }, { merge: true });
       }
     } catch (err: any) {
       console.error('Error loading user progress from Firestore:', err);
@@ -1219,12 +1243,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch (pErr) {
             console.warn('Could not update displayName on auth user:', pErr);
           }
-          setProfile(prev => ({
-            ...prev,
-            name: displayName.trim(),
-            codename: displayName.trim().toUpperCase().replace(/\s+/g, '-').slice(0, 14) || prev.codename
-          }));
         }
+        const cleanName = displayName ? displayName.trim() : (email.trim().split('@')[0] || '');
+        const freshProfile: UserProfile = {
+          ...INITIAL_USER_PROFILE,
+          name: cleanName,
+          codename: cleanName ? cleanName.toUpperCase().replace(/\s+/g, '-').slice(0, 14) : 'OPERATOR-01',
+          onboardingCompleted: false,
+          selectedRole: '',
+          targetRole: '',
+          skillLevel: '',
+          emailVerified: userCredential.user.emailVerified
+        };
+        setProfile(freshProfile);
+        try {
+          localStorage.setItem('mcl_profile', JSON.stringify(freshProfile));
+        } catch {}
         try {
           await sendEmailVerification(userCredential.user);
         } catch (vErr) {
@@ -1331,6 +1365,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const signOut = async () => {
     try {
       await fbSignOut(auth);
+      resetAllProgress();
       setSyncStatus(navigator.onLine ? 'SYNCED' : 'OFFLINE');
     } catch (err) {
       console.error('Sign-out error:', err);

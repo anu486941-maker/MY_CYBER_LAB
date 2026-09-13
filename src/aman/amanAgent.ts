@@ -43,7 +43,9 @@ export class AmanAgent {
     // -------------------------------------------------------------
     const compactContext: CompactLearnerContext = await AmanContextCache.getParallelContext(
       context,
-      activeMode
+      activeMode,
+      context.recentCommands || [],
+      message
     );
     timer.recordContext();
 

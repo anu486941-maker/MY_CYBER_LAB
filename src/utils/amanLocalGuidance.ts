@@ -136,29 +136,49 @@ ${actionTag}`;
       summary = `Opening requested module. ${actionTag}`;
     }
   }
-  // 5. CASUAL CONVERSATION ("Kya haal hai?", "Kaise ho?", "Hello", "How are you?", "Thanks")
+  // 5. CASUAL CONVERSATION ("Kya haal hai?", "Kaise ho?", "Hello", "How are you?", "Thanks", Rude/Frustrated inputs)
   else if (intentResult.intent === 'CONVERSATION') {
-    const qLower = userQuery.toLowerCase();
-    if (qLower.includes('kya kar') || qLower.includes('what are you doing') || qLower.includes('what r u doing')) {
+    const qLower = userQuery.toLowerCase().trim();
+    if (/fuck|stfu|shut up|screw you|you suck|idiot|stupid|useless|dumb/.test(qLower)) {
       fullText = isHinglish
-        ? `Bas tumhare next step ke liye ready hoon 😄 Batao, aaj kya karna hai?`
-        : `Just ready for your next move! 😄 What would you like to work on today?`;
+        ? `Koi baat nahi, agar kuch gadbad hui hai ya frustate ho gaye ho toh batao. Main help karne ke liye taiyaar hoon.`
+        : `I'm sorry if something felt frustrating or didn't work as expected. Let me know what you're trying to accomplish, and we'll sort it out together.`;
+      summary = isHinglish ? `Main help karne ke liye taiyaar hoon.` : `Let me know how I can help.`;
+    } else if (qLower.includes('kya kar') || qLower.includes('what are you doing') || qLower.includes('what r u doing')) {
+      fullText = isHinglish
+        ? `Bas tumhare next step ke liye ready hoon 😄 Batao, aaj kya explore karna chahte ho?`
+        : `Just here and ready to help you with cybersecurity, lab challenges, or whatever you'd like to explore. What's on your mind?`;
       summary = isHinglish ? `Main ready hoon!` : `Ready when you are!`;
-    } else if (qLower.includes('thanks') || qLower.includes('thank')) {
+    } else if (qLower.includes('how are you') || qLower.includes('how are u') || qLower.includes('how r u') || qLower.includes('how r you') || qLower.includes('how is it going') || qLower.includes("how's it going") || qLower.includes('how s it going') || qLower.includes('kaisa hai') || qLower.includes('kaise ho') || qLower.includes('kya haal')) {
       fullText = isHinglish
-        ? `Anytime! 😄 Cybersecurity learning mein koi bhi doubt ho, bina jhijhak poocho.`
-        : `You're very welcome! 😄 Feel free to ask whenever you have questions.`;
-      summary = `Anytime! 😄`;
-    } else if (qLower.includes('bye') || qLower.includes('goodbye')) {
+        ? `Main bilkul badhiya hoon 😄 Tum batao, aaj kya learn karna chahte ho?`
+        : `I'm doing great, thanks for asking! 😄 How are things with you today?`;
+      summary = isHinglish ? `Main badhiya hoon 😄` : `Doing great! 😄`;
+    } else if (qLower.includes('thanks') || qLower.includes('thank') || qLower.includes('ty') || qLower === 'thx') {
       fullText = isHinglish
-        ? `Aapko phir milenge! Tab tak happy learning and stay secure! 🛡️`
-        : `See you later! Keep practicing and stay secure! 🛡️`;
+        ? `You're welcome! 😄 Kabhi bhi koi doubt ya help chahiye ho toh poocho.`
+        : `You're very welcome! 😄 Let me know whenever you're ready for the next step.`;
+      summary = `You're welcome! 😄`;
+    } else if (qLower.includes('bored') || qLower.includes('bore')) {
+      fullText = isHinglish
+        ? `Chalo bore nahi hote 😄 Ek hands-on cybersecurity challenge try karein ya koi exciting attack/defense concept samjhein?`
+        : `Let's fix that! 😄 Want to jump into a hands-on lab challenge, solve a CTF puzzle, or explore an interesting attack technique?`;
+      summary = `Let's explore something fun!`;
+    } else if (qLower.includes('who are you') || qLower.includes('what are you')) {
+      fullText = isHinglish
+        ? `Main AMAN hoon — My Cyber Lab ka AI Cybersecurity Mentor. Main aapko practical hacking, defensive security aur career roadmap me guide karta hoon.`
+        : `I'm AMAN, your AI Cybersecurity Mentor at My Cyber Lab. I'm here to help you learn ethical hacking, defense, and build real-world security skills.`;
+      summary = `I'm AMAN, your cybersecurity mentor.`;
+    } else if (qLower.includes('bye') || qLower.includes('goodbye') || qLower.includes('see ya') || qLower.includes('see you')) {
+      fullText = isHinglish
+        ? `Aapko phir milenge! Tab tak practice karte raho aur stay secure! 🛡️`
+        : `See you later! Keep practicing and stay safe out there! 🛡️`;
       summary = `Goodbye! 🛡️`;
     } else {
       fullText = isHinglish
-        ? `Main bilkul badhiya hoon 😄 Tum batao, cybersecurity learning kaisi chal rahi hai?`
-        : `I'm doing great! 😄 Ready to help whenever you are. How is your learning going today?`;
-      summary = isHinglish ? `Main badhiya hoon 😄` : `I'm doing great! 😄`;
+        ? `Hello! 👋 Main bilkul badhiya hoon! Kaise ho? Aaj cybersecurity me kya explore karna chahte ho?`
+        : `Hello! 👋 How can I help you today? Whether it's practicing commands, exploring a concept, or working through a lab, I'm ready.`;
+      summary = `Hello! How can I help?`;
     }
   }
   // 6. ROOM / MODULE EXPLICIT QUERY
@@ -337,33 +357,22 @@ Practice testing and fixing injection vulnerabilities in our Web Security Lab.
   }
   // 8. GENERAL QUERY / FALLBACK
   else {
-    let contextExplanation = '';
-    if (intentResult.useRoomContext) {
-      contextExplanation = isHinglish
-        ? `Aap abhi **${course}** (${topic}) topic par ho.`
-        : `You are currently studying **${course}** (${topic}).`;
-    }
-
-    if (isHinglish) {
-      fullText = `${contextExplanation}
-      
-Chalo core concepts samjhte hain:
-- **Switch**: Same local network ke devices ko connect karta hai.
-- **Router**: Different networks ke beech traffic forward karta hai.
-- **Default Gateway**: Device ka exit point.
-
-Batao, kya help chahiye?`;
-      summary = contextExplanation || `Batao, kya help chahiye?`;
+    if (intentResult.useRoomContext && (userQuery.toLowerCase().includes('room') || userQuery.toLowerCase().includes('where am i') || userQuery.toLowerCase().includes('what is this'))) {
+      if (isHinglish) {
+        fullText = `Aap abhi **${course}** (${topic}) topic par ho.\n\nChalo core concepts samjhte hain:\n- **Switch**: Same local network ke devices ko connect karta hai.\n- **Router**: Different networks ke beech traffic forward karta hai.\n- **Default Gateway**: Device ka exit point.\n\nBatao, kya help chahiye?`;
+        summary = `Aap abhi ${course} (${topic}) topic par ho.`;
+      } else {
+        fullText = `You are currently in **${course}** (${topic}).\n\nKey concepts:\n- **Switch**: Connects devices on the same subnet.\n- **Router**: Routes traffic across networks.\n- **Default Gateway**: Exit path for external traffic.\n\nLet me know what you would like to explore next!`;
+        summary = `You are currently studying ${course}.`;
+      }
     } else {
-      fullText = `${contextExplanation}
-
-Key concepts:
-- **Switch**: Connects devices on the same subnet.
-- **Router**: Routes traffic across networks.
-- **Default Gateway**: Exit path for external traffic.
-
-Let me know what you would like to explore next!`;
-      summary = contextExplanation || `Let me know what you would like to explore next!`;
+      if (isHinglish) {
+        fullText = `Main aapki cybersecurity learning, hands-on lab commands, aur career guidance me help kar sakta hoon. Aap kis topic ya challenge par discuss karna chahte hain?`;
+        summary = `Main help karne ke liye taiyaar hoon.`;
+      } else {
+        fullText = `I'm here to help with any cybersecurity questions, hands-on terminal commands, lab troubleshooting, or career roadmaps. What would you like to explore or work on?`;
+        summary = `Ready to help with your cybersecurity journey.`;
+      }
     }
   }
 
